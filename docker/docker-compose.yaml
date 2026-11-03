@@ -890,36 +890,95 @@ services:
     volumes:
     - ./volumes/weaviate:/var/lib/weaviate
   diag:
-    image: alpine:3.20
+    image: python:3.12-alpine
     restart: "no"
     environment:
       DIAG_COOLIFY_TOKEN: ${DIAG_COOLIFY_TOKEN:-}
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    command:
-    - sh
+    entrypoint:
+    - python3
     - -c
     - |
-      apk add -q --no-cache docker-cli curl jq >/dev/null 2>&1
-      sleep 40
-      {
-        echo "===== DATE ====="; date -u
-        echo "===== PS -A (project) ====="
-        docker ps -a --format '{{.Names}} | {{.State}} | {{.Status}}' | grep -i zhqgyqcjx3s0camdqi2prewd | sort
-        for c in nginx plugin_daemon web ssrf_proxy agent_ssrf_proxy sandbox local_sandbox weaviate redis db_postgres api worker worker_beat api_websocket agent_backend; do
-          cid=$$(docker ps -aq --filter "name=$${c}-zhqgyqcjx3s0camdqi2prewd" | head -1)
-          if [ -n "$$cid" ]; then
-            echo "===== INSPECT $$c ====="
-            docker inspect "$$cid" --format 'status={{.State.Status}} exit={{.State.ExitCode}} restarts={{.RestartCount}} oom={{.State.OOMKilled}} err={{.State.Error}}'
-            echo "===== LOGS $$c (tail 40) ====="
-            docker logs --tail 40 "$$cid" 2>&1 | tail -40
-          fi
-        done
-      } > /tmp/diag.txt 2>&1
-      jq -n --arg k DIAG_OUTPUT --rawfile v /tmp/diag.txt '{key:$$k,value:$$v}' > /tmp/p.json
-      echo "===== POST RESULT =====" >> /tmp/diag.txt
-      curl -s -m 30 -X POST -H "Authorization: Bearer $$DIAG_COOLIFY_TOKEN" -H "Content-Type: application/json" --data @/tmp/p.json "http://69.197.178.193:8000/api/v1/applications/zhqgyqcjx3s0camdqi2prewd/envs" >> /tmp/diag.txt 2>&1
-      echo; echo "diag done"
+        import json, socket, http.client, urllib.request, os, time
+
+        APP = "zhqgyqcjx3s0camdqi2prewd"
+        BASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
+        TOKEN = os.environ.get("DIAG_COOLIFY_TOKEN", "")
+
+        def post_env(key, value):
+            body = json.dumps({"key": key, "value": str(value)[:60000]}).encode()
+            req = urllib.request.Request(BASE, data=body, method="POST",
+                headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=25) as r:
+                    return "POST %s -> %s" % (key, r.status)
+            except urllib.error.HTTPError as e:
+                if e.code in (400, 409, 422):
+                    req2 = urllib.request.Request(BASE, data=body, method="PATCH",
+                        headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
+                    try:
+                        with urllib.request.urlopen(req2, timeout=25) as r2:
+                            return "PATCH %s -> %s" % (key, r2.status)
+                    except Exception as e2:
+                        return "PATCH %s FAIL %s" % (key, str(e2)[:120])
+                return "POST %s FAIL %s %s" % (key, e.code, e.read()[:120])
+            except Exception as e:
+                return "POST %s ERR %s" % (key, str(e)[:120])
+
+        def docker_req(method, path):
+            c = http.client.HTTPConnection("localhost")
+            c.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            c.sock.connect("/var/run/docker.sock")
+            c.request(method, path)
+            resp = c.getresponse()
+            data = resp.read()
+            c.close()
+            return resp.status, data
+
+        def parse_frames(data):
+            out = b""
+            i = 0
+            while i + 8 <= len(data):
+                ln = int.from_bytes(data[i+4:i+8], "big")
+                out += data[i+8:i+8+ln]
+                i += 8 + ln
+            return out.decode("utf-8", "replace")
+
+        st = []
+        st.append(post_env("DIAG_S1", "alive " + time.strftime("%H:%M:%S") + " token_len=" + str(len(TOKEN))))
+        try:
+            code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+            conts = json.loads(data)
+            mine = [c for c in conts if APP in c.get("Names", [""])[0]]
+            summary = []
+            for c in mine:
+                name = c["Names"][0].lstrip("/")
+                summary.append("%s | %s | %s" % (name, c.get("State"), c.get("Status")))
+            st.append(post_env("DIAG_S2", "count=%d\n" % len(mine) + "\n".join(sorted(summary))))
+            for c in mine:
+                name = c["Names"][0].lstrip("/")
+                short = name.split("-")[0]
+                try:
+                    code2, logs = docker_req("GET", "/containers/%s/logs?tail=45&stdout=1&stderr=1" % c["Id"])
+                    text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
+                    st.append(post_env("DIAG_L_" + short, text[-8000:]))
+                except Exception as e:
+                    st.append(post_env("DIAG_L_" + short, "ERR " + str(e)[:150]))
+                if short in ("nginx", "plugin_daemon"):
+                    try:
+                        code3, insp = docker_req("GET", "/containers/%s/json" % c["Id"])
+                        info = json.loads(insp)
+                        s = info.get("State", {})
+                        brief = "status=%s exit=%s restarts=%s oom=%s error=%s" % (
+                            s.get("Status"), s.get("ExitCode"), s.get("RestartCount"), s.get("OOMKilled"), str(s.get("Error"))[:200])
+                        st.append(post_env("DIAG_I_" + short, brief))
+                    except Exception as e:
+                        st.append(post_env("DIAG_I_" + short, "ERR " + str(e)[:150]))
+        except Exception as e:
+            st.append(post_env("DIAG_S2", "DOCKER ERR " + str(e)[:200]))
+        post_env("DIAG_DONE", "\n".join(st))
+
 networks:
   ssrf_proxy_network:
     driver: bridge
