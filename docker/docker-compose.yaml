@@ -400,6 +400,14 @@ services:
     image: langgenius/dify-api:1.18.0
     environment:
       MODE: api
+      DB_HOST: ${DB_HOST:-db_postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD_missing}
+      DB_DATABASE: ${DB_DATABASE:-dify}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY_missing}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -467,6 +475,14 @@ services:
     - collaboration
     environment:
       MODE: api
+      DB_HOST: ${DB_HOST:-db_postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD_missing}
+      DB_DATABASE: ${DB_DATABASE:-dify}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY_missing}
     entrypoint:
     - /bin/bash
     - -c
@@ -534,6 +550,14 @@ services:
     image: langgenius/dify-api:1.18.0
     environment:
       MODE: worker
+      DB_HOST: ${DB_HOST:-db_postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD_missing}
+      DB_DATABASE: ${DB_DATABASE:-dify}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY_missing}
     depends_on:
       init_permissions:
         condition: service_completed_successfully
@@ -747,6 +771,13 @@ services:
     - default
     environment:
       PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
+      DB_HOST: ${DB_HOST:-db_postgres}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD_missing}
+      DB_DATABASE: ${DB_DATABASE:-dify}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
     ports:
     - ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}
     volumes:
