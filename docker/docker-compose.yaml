@@ -912,25 +912,24 @@ services:
                 headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
             try:
                 with urllib.request.urlopen(req, timeout=25) as r:
-                    return "POST %s -> %s" % (key, r.status)
+                    return r.status
             except urllib.error.HTTPError as e:
                 if e.code in (400, 409, 422):
                     req2 = urllib.request.Request(BASE, data=body, method="PATCH",
                         headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
                     try:
                         with urllib.request.urlopen(req2, timeout=25) as r2:
-                            return "PATCH %s -> %s" % (key, r2.status)
+                            return r2.status
                     except Exception as e2:
-                        return "PATCH %s FAIL %s" % (key, str(e2)[:120])
-                return "POST %s FAIL %s %s" % (key, e.code, e.read()[:120])
-            except Exception as e:
-                return "POST %s ERR %s" % (key, str(e)[:120])
+                        return "PATCHFAIL " + str(e2)[:100]
+                return "POSTFAIL %s %s" % (e.code, e.read()[:100])
 
-        def docker_req(method, path):
+        def docker_req(method, path, body=None):
             c = http.client.HTTPConnection("localhost")
             c.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             c.sock.connect("/var/run/docker.sock")
-            c.request(method, path)
+            hdr = {"Content-Type": "application/json"}
+            c.request(method, path, body=json.dumps(body).encode() if body else None, headers=hdr)
             resp = c.getresponse()
             data = resp.read()
             c.close()
@@ -945,39 +944,50 @@ services:
                 i += 8 + ln
             return out.decode("utf-8", "replace")
 
-        st = []
-        st.append(post_env("DIAG_S1", "alive " + time.strftime("%H:%M:%S") + " token_len=" + str(len(TOKEN))))
-        try:
-            code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-            conts = json.loads(data)
-            mine = [c for c in conts if APP in c.get("Names", [""])[0]]
-            summary = []
-            for c in mine:
-                name = c["Names"][0].lstrip("/")
-                summary.append("%s | %s | %s" % (name, c.get("State"), c.get("Status")))
-            st.append(post_env("DIAG_S2", "count=%d\n" % len(mine) + "\n".join(sorted(summary))))
-            for c in mine:
-                name = c["Names"][0].lstrip("/")
-                short = name.split("-")[0]
-                try:
-                    code2, logs = docker_req("GET", "/containers/%s/logs?tail=45&stdout=1&stderr=1" % c["Id"])
-                    text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
-                    st.append(post_env("DIAG_L_" + short, text[-8000:]))
-                except Exception as e:
-                    st.append(post_env("DIAG_L_" + short, "ERR " + str(e)[:150]))
-                if short in ("nginx", "plugin_daemon"):
-                    try:
-                        code3, insp = docker_req("GET", "/containers/%s/json" % c["Id"])
-                        info = json.loads(insp)
-                        s = info.get("State", {})
-                        brief = "status=%s exit=%s restarts=%s oom=%s error=%s" % (
-                            s.get("Status"), s.get("ExitCode"), s.get("RestartCount"), s.get("OOMKilled"), str(s.get("Error"))[:200])
-                        st.append(post_env("DIAG_I_" + short, brief))
-                    except Exception as e:
-                        st.append(post_env("DIAG_I_" + short, "ERR " + str(e)[:150]))
-        except Exception as e:
-            st.append(post_env("DIAG_S2", "DOCKER ERR " + str(e)[:200]))
-        post_env("DIAG_DONE", "\n".join(st))
+        rep = []
+        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+        conts = json.loads(data)
+        mine = [c for c in conts if APP in c.get("Names", [""])[0]]
+        ssrf = [c for c in mine if c["Names"][0].startswith("/ssrf_proxy")]
+        if ssrf:
+            code2, insp = docker_req("GET", "/containers/%s/json" % ssrf[0]["Id"])
+            info = json.loads(insp)
+            wdir = info.get("Config", {}).get("Labels", {}).get("com.docker.compose.project.working_dir", "UNKNOWN")
+            rep.append("working_dir=" + wdir)
+            rep.append("MOUNTS:")
+            for m in info.get("Mounts", []):
+                rep.append("  %s -> %s (rw=%s)" % (m.get("Source"), m.get("Destination"), m.get("RW")))
+            # probe artifact dir with temp container
+            if wdir and wdir != "UNKNOWN":
+                probe_cmd = [
+                    "sh", "-c",
+                    "echo === LS docker/ssrf_proxy ===; ls -la /probe/docker/ssrf_proxy 2>&1; "
+                    "echo === LS docker/nginx ===; ls -la /probe/docker/nginx 2>&1; "
+                    "echo === FILE types ===; file /probe/docker/ssrf_proxy/docker-entrypoint.sh /probe/docker/ssrf_proxy/docker-agent-entrypoint.sh /probe/docker/nginx/docker-entrypoint.sh 2>&1; "
+                    "echo === HEAD entrypoint ===; head -c 200 /probe/docker/ssrf_proxy/docker-entrypoint.sh 2>&1; echo; "
+                    "echo === GIT status ===; ls /probe/.git >/dev/null 2>&1 && echo git-dir-present || echo no-git; "
+                    "echo === FIND entrypoints ===; find /probe/docker -maxdepth 2 -name '*entrypoint*' -exec ls -la {} \; 2>&1"
+                ]
+                body = {
+                    "Image": "busybox:latest",
+                    "Cmd": probe_cmd,
+                    "HostConfig": {"Binds": [wdir + ":/probe"]},
+                    "Labels": {"diag": "probe"},
+                }
+                code3, cdata = docker_req("POST", "/containers/create?name=diagprobe-zh", body)
+                if code3 == 201:
+                    cid = json.loads(cdata)["Id"]
+                    docker_req("POST", "/containers/%s/start" % cid)
+                    time.sleep(6)
+                    code4, logs = docker_req("GET", "/containers/%s/logs?stdout=1&stderr=1" % cid)
+                    rep.append("PROBE OUTPUT:")
+                    rep.append(parse_frames(logs)[:8000])
+                    docker_req("DELETE", "/containers/%s?v=true&force=true" % cid)
+                else:
+                    rep.append("probe create FAIL %s %s" % (code3, cdata[:200]))
+        else:
+            rep.append("no ssrf_proxy container found; all=%s" % [c["Names"][0] for c in conts][:20])
+        post_env("DIAG_PROBE", "\n".join(rep)[:60000])
 
 networks:
   ssrf_proxy_network:
