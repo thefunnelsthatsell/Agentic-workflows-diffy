@@ -894,36 +894,24 @@ services:
     restart: always
     volumes:
     - ./volumes/weaviate:/var/lib/weaviate
-  diag:
+  keeper:
     image: python:3.12-alpine
-    restart: "no"
-    environment:
-      DIAG_COOLIFY_TOKEN: ${DIAG_COOLIFY_TOKEN:-}
+    restart: always
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     entrypoint:
     - python3
     - -c
     - |
-        import json, socket, http.client, urllib.request, os, time
+        import json, socket, http.client, time, sys
 
         APP = "zhqgyqcjx3s0camdqi2prewd"
-        BASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
-        TOKEN = os.environ.get("DIAG_COOLIFY_TOKEN", "")
-
-        def post_env(key, value):
-            body = json.dumps({"key": key, "value": str(value)[:60000]}).encode()
-            req = urllib.request.Request(BASE, data=body, method="POST",
-                headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
-            try:
-                with urllib.request.urlopen(req, timeout=25) as r:
-                    return r.status
-            except urllib.error.HTTPError as e:
-                return "POSTFAIL %s %s" % (e.code, e.read()[:60])
+        SKIP = {"keeper", "diag", "init_permissions"}
 
         def docker_req(method, path, body=None):
-            c = http.client.HTTPConnection("localhost")
+            c = http.client.HTTPConnection("localhost", timeout=30)
             c.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            c.sock.settimeout(30)
             c.sock.connect("/var/run/docker.sock")
             c.request(method, path, body=json.dumps(body).encode() if body else None,
                       headers={"Content-Type": "application/json"})
@@ -935,64 +923,27 @@ services:
         def short(c):
             return c["Names"][0].lstrip("/").split("-")[0]
 
-        # 1) HOST MEMORY (container sees host /proc)
-        mem = []
-        try:
-            with open("/proc/meminfo") as fh:
-                for line in fh:
-                    if any(k in line for k in ("MemTotal", "MemFree", "MemAvailable", "SwapTotal", "SwapFree", "Cached")):
-                        mem.append(line.strip())
-        except Exception as e:
-            mem.append("meminfo ERR " + str(e)[:80])
-        # load average
-        try:
-            with open("/proc/loadavg") as fh:
-                mem.append("loadavg: " + fh.read().strip())
-        except Exception:
-            pass
-        st = post_env("DIAG_MEM", "\n".join(mem))
-        print("post DIAG_MEM:", st, flush=True)
-
-        # 2) ALL container states with exit codes + OOM flags
-        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-        mine = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
-        lines = []
-        for c in mine:
+        print("[keeper] started, watching project containers", flush=True)
+        while True:
             try:
-                ci, insp = docker_req("GET", "/containers/%s/json" % c["Id"])
-                info = json.loads(insp)
-                s = info.get("State", {})
-                lines.append("%s | %s | exit=%s oom=%s restarts=%s" % (
-                    short(c), s.get("Status"), s.get("ExitCode"), s.get("OOMKilled"), s.get("RestartCount")))
+                code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+                mine = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
+                byname = {}
+                for c in mine:
+                    byname.setdefault(short(c), c)
+                for name in ("agent_ssrf_proxy", "ssrf_proxy", "plugin_daemon", "agent_backend",
+                             "api", "api_websocket", "worker", "worker_beat", "nginx",
+                             "sandbox", "local_sandbox", "web", "redis", "weaviate", "db_postgres"):
+                    c = byname.get(name)
+                    if c and c.get("State") in ("created", "exited"):
+                        try:
+                            docker_req("POST", "/containers/%s/start" % c["Id"])
+                            print("[keeper] started", name, "(was %s)" % c.get("State"), flush=True)
+                        except Exception as e:
+                            print("[keeper] start", name, "ERR", str(e)[:80], flush=True)
             except Exception as e:
-                lines.append(short(c) + " inspect ERR " + str(e)[:60])
-        post_env("DIAG_STATES", "\n".join(sorted(lines)))
-        print("states posted", flush=True)
-
-        # 3) start blocked (created) containers in dependency order
-        order = ["agent_ssrf_proxy", "ssrf_proxy", "agent_backend", "api", "api_websocket",
-                 "worker", "worker_beat", "plugin_daemon", "nginx", "sandbox"]
-        byname = {short(c): c for c in mine}
-        started = []
-        for name in order:
-            c = byname.get(name)
-            if c and c.get("State") == "created":
-                docker_req("POST", "/containers/%s/start" % c["Id"])
-                started.append(name)
-        post_env("DIAG_STARTED", ",".join(started) or "none")
-        time.sleep(40)
-
-        # 4) final states after 40s
-        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-        mine2 = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
-        lines2 = []
-        for c in mine2:
-            lines2.append("%s | %s" % (short(c), c.get("State")))
-        post_env("DIAG_FINAL", "\n".join(sorted(lines2)))
-        with open("/proc/meminfo") as fh:
-            ml = [l.strip() for l in fh if any(k in l for k in ("MemAvailable", "SwapFree"))]
-        post_env("DIAG_MEM2", "\n".join(ml))
-        print("done", flush=True)
+                print("[keeper] loop ERR", str(e)[:100], flush=True)
+            time.sleep(60)
 
 networks:
   ssrf_proxy_network:
