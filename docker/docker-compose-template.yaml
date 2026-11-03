@@ -410,14 +410,15 @@ services:
     - -c
     - exec docker-entrypoint.sh postgres -c "max_connections=$$POSTGRES_MAX_CONNECTIONS" -c "shared_buffers=$$POSTGRES_SHARED_BUFFERS" -c "work_mem=$$POSTGRES_WORK_MEM" -c "maintenance_work_mem=$$POSTGRES_MAINTENANCE_WORK_MEM" -c "effective_cache_size=$$POSTGRES_EFFECTIVE_CACHE_SIZE" -c "statement_timeout=$$POSTGRES_STATEMENT_TIMEOUT" -c "idle_in_transaction_session_timeout=$$POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT"
     volumes:
-    - ./volumes/db/data:/var/lib/postgresql/data
+    - db_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test:
       - CMD-SHELL
       - pg_isready -h db_postgres -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
-      interval: 1s
-      timeout: 3s
+      interval: 5s
+      timeout: 5s
       retries: 60
+      start_period: 60s
   redis:
     env_file:
     - path: ./envs/databases/redis.env
@@ -640,3 +641,4 @@ volumes:
   dify_es01_data: null
   dify_agent_local_sandbox_home: null
   dify_agent_local_sandbox_workspace: null
+  db_postgres_data: {}
