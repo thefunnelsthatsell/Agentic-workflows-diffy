@@ -919,7 +919,7 @@ services:
                 with urllib.request.urlopen(req, timeout=25) as r:
                     return r.status
             except urllib.error.HTTPError as e:
-                return "POSTFAIL %s %s" % (e.code, e.read()[:80])
+                return "POSTFAIL %s" % e.code
 
         def docker_req(method, path, body=None):
             c = http.client.HTTPConnection("localhost")
@@ -932,46 +932,32 @@ services:
             c.close()
             return resp.status, data
 
-        def parse_frames(data):
-            out = b""
-            i = 0
-            while i + 8 <= len(data):
-                ln = int.from_bytes(data[i+4:i+8], "big")
-                out += data[i+8:i+8+ln]
-                i += 8 + ln
-            return out.decode("utf-8", "replace")
-
         code, data = docker_req("GET", "/containers/json?all=1&limit=60")
         conts = json.loads(data)
         mine = [c for c in conts if APP in c.get("Names", [""])[0]]
-        FAILING = ["ssrf_proxy", "agent_ssrf_proxy", "nginx", "plugin_daemon", "sandbox"]
+        WANT = ["ssrf_proxy", "agent_ssrf_proxy", "nginx", "plugin_daemon", "api"]
+        SENSITIVE = ("PASSWORD", "SECRET", "TOKEN", "KEY")
 
         for c in mine:
             name = c["Names"][0].lstrip("/")
             short = name.split("-")[0]
-            if short not in FAILING:
+            if short not in WANT:
                 continue
-            rep = ["name=" + name]
             try:
                 code3, insp = docker_req("GET", "/containers/%s/json" % c["Id"])
                 info = json.loads(insp)
-                s = info.get("State", {})
-                rep.append("state: status=%s exit=%s err=%s oom=%s" % (
-                    s.get("Status"), s.get("ExitCode"), str(s.get("Error"))[:150], s.get("OOMKilled")))
-                rep.append("mounts:")
-                for m in info.get("Mounts", []):
-                    rep.append("  %s -> %s" % (m.get("Source"), m.get("Destination")))
+                env = info.get("Config", {}).get("Env", []) or []
+                lines = []
+                for e in sorted(env):
+                    if "=" in e:
+                        k, v = e.split("=", 1)
+                        if any(s in k for s in SENSITIVE):
+                            v = "***len=%d" % len(v)
+                        lines.append("%s=%s" % (k, v))
+                post_env("DIAG_ENV_" + short, "\n".join(lines)[:60000])
             except Exception as e:
-                rep.append("inspect ERR " + str(e)[:120])
-            try:
-                code2, logs = docker_req("GET", "/containers/%s/logs?tail=30&stdout=1&stderr=1" % c["Id"])
-                text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
-                rep.append("LOGS:")
-                rep.append(text[-3500:])
-            except Exception as e:
-                rep.append("logs ERR " + str(e)[:120])
-            post_env("DIAG_F_" + short, "\n".join(rep))
-        post_env("DIAG_V6_DONE", time.strftime("%H:%M:%S"))
+                post_env("DIAG_ENV_" + short, "ERR " + str(e)[:150])
+        post_env("DIAG_V7_DONE", time.strftime("%H:%M:%S"))
 
 networks:
   ssrf_proxy_network:
