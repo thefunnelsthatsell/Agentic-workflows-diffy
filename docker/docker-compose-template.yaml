@@ -1,67 +1,98 @@
 x-shared-api-config:
-  env_file: &id001
-  - path: ./envs/core-services/shared.env
+  env_file:
+  - &id001
+    path: ./envs/core-services/shared.env
     required: false
-  - path: ./envs/core-services/api-worker.env
+  - &id002
+    path: ./envs/core-services/api-worker.env
     required: false
-  - path: ./envs/security.env
+  - &id003
+    path: ./envs/security.env
     required: false
-  - path: ./envs/databases/db-postgres.env
+  - &id004
+    path: ./envs/databases/db-postgres.env
     required: false
-  - path: ./envs/databases/db-mysql.env
+  - &id005
+    path: ./envs/databases/db-mysql.env
     required: false
-  - path: ./envs/databases/redis.env
+  - &id006
+    path: ./envs/databases/redis.env
     required: false
-  - path: ./envs/vectorstores/weaviate.env
+  - &id007
+    path: ./envs/vectorstores/weaviate.env
     required: false
-  - path: ./envs/vectorstores/qdrant.env
+  - &id008
+    path: ./envs/vectorstores/qdrant.env
     required: false
-  - path: ./envs/vectorstores/oceanbase.env
+  - &id009
+    path: ./envs/vectorstores/oceanbase.env
     required: false
-  - path: ./envs/vectorstores/seekdb.env
+  - &id010
+    path: ./envs/vectorstores/seekdb.env
     required: false
-  - path: ./envs/vectorstores/couchbase.env
+  - &id011
+    path: ./envs/vectorstores/couchbase.env
     required: false
-  - path: ./envs/vectorstores/pgvector.env
+  - &id012
+    path: ./envs/vectorstores/pgvector.env
     required: false
-  - path: ./envs/vectorstores/vastbase.env
+  - &id013
+    path: ./envs/vectorstores/vastbase.env
     required: false
-  - path: ./envs/vectorstores/pgvecto-rs.env
+  - &id014
+    path: ./envs/vectorstores/pgvecto-rs.env
     required: false
-  - path: ./envs/vectorstores/chroma.env
+  - &id015
+    path: ./envs/vectorstores/chroma.env
     required: false
-  - path: ./envs/vectorstores/iris.env
+  - &id016
+    path: ./envs/vectorstores/iris.env
     required: false
-  - path: ./envs/vectorstores/oracle.env
+  - &id017
+    path: ./envs/vectorstores/oracle.env
     required: false
-  - path: ./envs/vectorstores/opengauss.env
+  - &id018
+    path: ./envs/vectorstores/opengauss.env
     required: false
-  - path: ./envs/vectorstores/myscale.env
+  - &id019
+    path: ./envs/vectorstores/myscale.env
     required: false
-  - path: ./envs/vectorstores/matrixone.env
+  - &id020
+    path: ./envs/vectorstores/matrixone.env
     required: false
-  - path: ./envs/vectorstores/elasticsearch.env
+  - &id021
+    path: ./envs/vectorstores/elasticsearch.env
     required: false
-  - path: ./envs/vectorstores/opensearch.env
+  - &id022
+    path: ./envs/vectorstores/opensearch.env
     required: false
-  - path: ./envs/vectorstores/milvus.env
+  - &id023
+    path: ./envs/vectorstores/milvus.env
     required: false
-  - path: ./envs/infrastructure/nginx.env
+  - &id024
+    path: ./envs/infrastructure/nginx.env
     required: false
-  - path: ./envs/infrastructure/certbot.env
+  - &id025
+    path: ./envs/infrastructure/certbot.env
     required: false
-  - path: ./envs/infrastructure/ssrf-proxy.env
+  - &id026
+    path: ./envs/infrastructure/ssrf-proxy.env
     required: false
-  - path: ./envs/infrastructure/etcd.env
+  - &id027
+    path: ./envs/infrastructure/etcd.env
     required: false
-  - path: ./envs/infrastructure/minio.env
+  - &id028
+    path: ./envs/infrastructure/minio.env
     required: false
-  - path: ./envs/infrastructure/milvus-standalone.env
+  - &id029
+    path: ./envs/infrastructure/milvus-standalone.env
     required: false
-  - path: ./envs/core-services/api.env
+  - &id030
+    path: ./envs/core-services/api.env
     required: false
   - ./.env
-  - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+  - &id031
+    path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
     required: false
   - ./envs/core-services/api-worker.defaults
   - ./envs/core-services/api.defaults
@@ -70,69 +101,100 @@ x-shared-api-config:
   - default
   restart: always
 x-shared-worker-config:
-  env_file: &id002
-  - path: ./envs/core-services/shared.env
+  env_file:
+  - &id032
+    path: ./envs/core-services/shared.env
     required: false
-  - path: ./envs/core-services/api-worker.env
+  - &id033
+    path: ./envs/core-services/api-worker.env
     required: false
-  - path: ./envs/security.env
+  - &id034
+    path: ./envs/security.env
     required: false
-  - path: ./envs/databases/db-postgres.env
+  - &id035
+    path: ./envs/databases/db-postgres.env
     required: false
-  - path: ./envs/databases/db-mysql.env
+  - &id036
+    path: ./envs/databases/db-mysql.env
     required: false
-  - path: ./envs/databases/redis.env
+  - &id037
+    path: ./envs/databases/redis.env
     required: false
-  - path: ./envs/vectorstores/weaviate.env
+  - &id038
+    path: ./envs/vectorstores/weaviate.env
     required: false
-  - path: ./envs/vectorstores/qdrant.env
+  - &id039
+    path: ./envs/vectorstores/qdrant.env
     required: false
-  - path: ./envs/vectorstores/oceanbase.env
+  - &id040
+    path: ./envs/vectorstores/oceanbase.env
     required: false
-  - path: ./envs/vectorstores/seekdb.env
+  - &id041
+    path: ./envs/vectorstores/seekdb.env
     required: false
-  - path: ./envs/vectorstores/couchbase.env
+  - &id042
+    path: ./envs/vectorstores/couchbase.env
     required: false
-  - path: ./envs/vectorstores/pgvector.env
+  - &id043
+    path: ./envs/vectorstores/pgvector.env
     required: false
-  - path: ./envs/vectorstores/vastbase.env
+  - &id044
+    path: ./envs/vectorstores/vastbase.env
     required: false
-  - path: ./envs/vectorstores/pgvecto-rs.env
+  - &id045
+    path: ./envs/vectorstores/pgvecto-rs.env
     required: false
-  - path: ./envs/vectorstores/chroma.env
+  - &id046
+    path: ./envs/vectorstores/chroma.env
     required: false
-  - path: ./envs/vectorstores/iris.env
+  - &id047
+    path: ./envs/vectorstores/iris.env
     required: false
-  - path: ./envs/vectorstores/oracle.env
+  - &id048
+    path: ./envs/vectorstores/oracle.env
     required: false
-  - path: ./envs/vectorstores/opengauss.env
+  - &id049
+    path: ./envs/vectorstores/opengauss.env
     required: false
-  - path: ./envs/vectorstores/myscale.env
+  - &id050
+    path: ./envs/vectorstores/myscale.env
     required: false
-  - path: ./envs/vectorstores/matrixone.env
+  - &id051
+    path: ./envs/vectorstores/matrixone.env
     required: false
-  - path: ./envs/vectorstores/elasticsearch.env
+  - &id052
+    path: ./envs/vectorstores/elasticsearch.env
     required: false
-  - path: ./envs/vectorstores/opensearch.env
+  - &id053
+    path: ./envs/vectorstores/opensearch.env
     required: false
-  - path: ./envs/vectorstores/milvus.env
+  - &id054
+    path: ./envs/vectorstores/milvus.env
     required: false
-  - path: ./envs/infrastructure/nginx.env
+  - &id055
+    path: ./envs/infrastructure/nginx.env
     required: false
-  - path: ./envs/infrastructure/certbot.env
+  - &id056
+    path: ./envs/infrastructure/certbot.env
     required: false
-  - path: ./envs/infrastructure/ssrf-proxy.env
+  - &id057
+    path: ./envs/infrastructure/ssrf-proxy.env
     required: false
-  - path: ./envs/infrastructure/etcd.env
+  - &id058
+    path: ./envs/infrastructure/etcd.env
     required: false
-  - path: ./envs/infrastructure/minio.env
+  - &id059
+    path: ./envs/infrastructure/minio.env
     required: false
-  - path: ./envs/infrastructure/milvus-standalone.env
+  - &id060
+    path: ./envs/infrastructure/milvus-standalone.env
     required: false
-  - path: ./envs/core-services/worker.env
+  - &id061
+    path: ./envs/core-services/worker.env
     required: false
   - ./.env
-  - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+  - &id062
+    path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
     required: false
   - ./envs/core-services/api-worker.defaults
   - ./envs/core-services/worker.defaults
@@ -184,69 +246,100 @@ x-knowledge-fs-celery-worker:
   networks:
   - default
 x-shared-worker-beat-config:
-  env_file: &id003
-  - path: ./envs/core-services/shared.env
+  env_file:
+  - &id063
+    path: ./envs/core-services/shared.env
     required: false
-  - path: ./envs/core-services/api-worker.env
+  - &id064
+    path: ./envs/core-services/api-worker.env
     required: false
-  - path: ./envs/security.env
+  - &id065
+    path: ./envs/security.env
     required: false
-  - path: ./envs/databases/db-postgres.env
+  - &id066
+    path: ./envs/databases/db-postgres.env
     required: false
-  - path: ./envs/databases/db-mysql.env
+  - &id067
+    path: ./envs/databases/db-mysql.env
     required: false
-  - path: ./envs/databases/redis.env
+  - &id068
+    path: ./envs/databases/redis.env
     required: false
-  - path: ./envs/vectorstores/weaviate.env
+  - &id069
+    path: ./envs/vectorstores/weaviate.env
     required: false
-  - path: ./envs/vectorstores/qdrant.env
+  - &id070
+    path: ./envs/vectorstores/qdrant.env
     required: false
-  - path: ./envs/vectorstores/oceanbase.env
+  - &id071
+    path: ./envs/vectorstores/oceanbase.env
     required: false
-  - path: ./envs/vectorstores/seekdb.env
+  - &id072
+    path: ./envs/vectorstores/seekdb.env
     required: false
-  - path: ./envs/vectorstores/couchbase.env
+  - &id073
+    path: ./envs/vectorstores/couchbase.env
     required: false
-  - path: ./envs/vectorstores/pgvector.env
+  - &id074
+    path: ./envs/vectorstores/pgvector.env
     required: false
-  - path: ./envs/vectorstores/vastbase.env
+  - &id075
+    path: ./envs/vectorstores/vastbase.env
     required: false
-  - path: ./envs/vectorstores/pgvecto-rs.env
+  - &id076
+    path: ./envs/vectorstores/pgvecto-rs.env
     required: false
-  - path: ./envs/vectorstores/chroma.env
+  - &id077
+    path: ./envs/vectorstores/chroma.env
     required: false
-  - path: ./envs/vectorstores/iris.env
+  - &id078
+    path: ./envs/vectorstores/iris.env
     required: false
-  - path: ./envs/vectorstores/oracle.env
+  - &id079
+    path: ./envs/vectorstores/oracle.env
     required: false
-  - path: ./envs/vectorstores/opengauss.env
+  - &id080
+    path: ./envs/vectorstores/opengauss.env
     required: false
-  - path: ./envs/vectorstores/myscale.env
+  - &id081
+    path: ./envs/vectorstores/myscale.env
     required: false
-  - path: ./envs/vectorstores/matrixone.env
+  - &id082
+    path: ./envs/vectorstores/matrixone.env
     required: false
-  - path: ./envs/vectorstores/elasticsearch.env
+  - &id083
+    path: ./envs/vectorstores/elasticsearch.env
     required: false
-  - path: ./envs/vectorstores/opensearch.env
+  - &id084
+    path: ./envs/vectorstores/opensearch.env
     required: false
-  - path: ./envs/vectorstores/milvus.env
+  - &id085
+    path: ./envs/vectorstores/milvus.env
     required: false
-  - path: ./envs/infrastructure/nginx.env
+  - &id086
+    path: ./envs/infrastructure/nginx.env
     required: false
-  - path: ./envs/infrastructure/certbot.env
+  - &id087
+    path: ./envs/infrastructure/certbot.env
     required: false
-  - path: ./envs/infrastructure/ssrf-proxy.env
+  - &id088
+    path: ./envs/infrastructure/ssrf-proxy.env
     required: false
-  - path: ./envs/infrastructure/etcd.env
+  - &id089
+    path: ./envs/infrastructure/etcd.env
     required: false
-  - path: ./envs/infrastructure/minio.env
+  - &id090
+    path: ./envs/infrastructure/minio.env
     required: false
-  - path: ./envs/infrastructure/milvus-standalone.env
+  - &id091
+    path: ./envs/infrastructure/milvus-standalone.env
     required: false
-  - path: ./envs/core-services/worker-beat.env
+  - &id092
+    path: ./envs/core-services/worker-beat.env
     required: false
   - ./.env
-  - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
+  - &id093
+    path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
     required: false
   - ./envs/core-services/api-worker.defaults
   - ./envs/core-services/worker-beat.defaults
@@ -265,7 +358,41 @@ services:
     - ./volumes/app/storage:/app/api/storage
     restart: 'no'
   api:
-    env_file: *id001
+    env_file:
+    - *id001
+    - *id002
+    - *id003
+    - *id004
+    - *id005
+    - *id006
+    - *id007
+    - *id008
+    - *id009
+    - *id010
+    - *id011
+    - *id012
+    - *id013
+    - *id014
+    - *id015
+    - *id016
+    - *id017
+    - *id018
+    - *id019
+    - *id020
+    - *id021
+    - *id022
+    - *id023
+    - *id024
+    - *id025
+    - *id026
+    - *id027
+    - *id028
+    - *id029
+    - *id030
+    - *id031
+    - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/api.defaults
+    - ./.env
     networks:
     - ssrf_proxy_network
     - default
@@ -296,7 +423,41 @@ services:
       retries: 3
       start_period: 30s
   api_websocket:
-    env_file: *id001
+    env_file:
+    - *id001
+    - *id002
+    - *id003
+    - *id004
+    - *id005
+    - *id006
+    - *id007
+    - *id008
+    - *id009
+    - *id010
+    - *id011
+    - *id012
+    - *id013
+    - *id014
+    - *id015
+    - *id016
+    - *id017
+    - *id018
+    - *id019
+    - *id020
+    - *id021
+    - *id022
+    - *id023
+    - *id024
+    - *id025
+    - *id026
+    - *id027
+    - *id028
+    - *id029
+    - *id030
+    - *id031
+    - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/api.defaults
+    - ./.env
     networks:
     - ssrf_proxy_network
     - default
@@ -331,7 +492,41 @@ services:
     volumes:
     - ./volumes/app/storage:/app/api/storage
   worker:
-    env_file: *id002
+    env_file:
+    - *id032
+    - *id033
+    - *id034
+    - *id035
+    - *id036
+    - *id037
+    - *id038
+    - *id039
+    - *id040
+    - *id041
+    - *id042
+    - *id043
+    - *id044
+    - *id045
+    - *id046
+    - *id047
+    - *id048
+    - *id049
+    - *id050
+    - *id051
+    - *id052
+    - *id053
+    - *id054
+    - *id055
+    - *id056
+    - *id057
+    - *id058
+    - *id059
+    - *id060
+    - *id061
+    - *id062
+    - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/worker.defaults
+    - ./.env
     networks:
     - ssrf_proxy_network
     - default
@@ -361,7 +556,41 @@ services:
       start_period: 60s
       disable: ${COMPOSE_WORKER_HEALTHCHECK_DISABLED:-true}
   worker_beat:
-    env_file: *id003
+    env_file:
+    - *id063
+    - *id064
+    - *id065
+    - *id066
+    - *id067
+    - *id068
+    - *id069
+    - *id070
+    - *id071
+    - *id072
+    - *id073
+    - *id074
+    - *id075
+    - *id076
+    - *id077
+    - *id078
+    - *id079
+    - *id080
+    - *id081
+    - *id082
+    - *id083
+    - *id084
+    - *id085
+    - *id086
+    - *id087
+    - *id088
+    - *id089
+    - *id090
+    - *id091
+    - *id092
+    - *id093
+    - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/worker-beat.defaults
+    - ./.env
     networks:
     - ssrf_proxy_network
     - default
@@ -394,13 +623,14 @@ services:
       required: false
     - path: ./envs/security.env
       required: false
-    - ./.env
     - ./envs/core-services/web.defaults
+    - ./.env
   db_postgres:
     env_file:
     - path: ./envs/databases/db-postgres.env
       required: false
     - ./envs/databases/db-postgres.defaults
+    - ./.env
     image: postgres:15-alpine
     profiles:
     - postgresql
@@ -425,6 +655,7 @@ services:
     - path: ./envs/databases/redis.env
       required: false
     - ./envs/databases/redis.defaults
+    - ./.env
     image: redis:6-alpine
     restart: always
     volumes:
@@ -445,8 +676,8 @@ services:
       required: false
     - path: ./envs/security.env
       required: false
-    - ./.env
     - ./envs/core-services/sandbox.defaults
+    - ./.env
     volumes:
     - ./volumes/sandbox/dependencies:/dependencies
     - ./volumes/sandbox/conf:/conf
@@ -468,6 +699,7 @@ services:
     env_file:
     - path: ./envs/core-services/local-sandbox.env
       required: false
+    - ./.env
     environment:
     - SHELLCTL_AUTH_TOKEN=${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
     - HTTP_PROXY=http://agent_ssrf_proxy:3128
@@ -507,9 +739,9 @@ services:
       required: false
     - path: ./envs/databases/redis.env
       required: false
-    - ./.env
     - ./envs/core-services/api-worker.defaults
     - ./envs/core-services/plugin-daemon.defaults
+    - ./.env
     networks:
     - ssrf_proxy_network
     - default
@@ -533,8 +765,8 @@ services:
       required: false
     - path: ./envs/core-services/dify-agent.env
       required: false
-    - ./.env
     - ./envs/core-services/dify-agent.defaults
+    - ./.env
     environment:
       DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN: ${DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN:-${DIFY_AGENT_SHELLCTL_AUTH_TOKEN:-}}
     depends_on:
@@ -560,6 +792,7 @@ services:
     - path: ./envs/infrastructure/ssrf-proxy.env
       required: false
     - ./envs/infrastructure/ssrf-proxy.defaults
+    - ./.env
     networks:
     - default
     - local_sandbox_proxy_network
@@ -568,6 +801,7 @@ services:
     - path: ./envs/infrastructure/ssrf-proxy.env
       required: false
     - ./envs/infrastructure/ssrf-proxy.defaults
+    - ./.env
     image: ubuntu/squid:latest
     restart: always
     volumes:
@@ -586,6 +820,7 @@ services:
     - path: ./envs/infrastructure/nginx.env
       required: false
     - ./envs/infrastructure/nginx.defaults
+    - ./.env
     image: nginx:latest
     restart: always
     volumes:
@@ -616,6 +851,7 @@ services:
     - path: ./envs/vectorstores/weaviate.env
       required: false
     - ./envs/vectorstores/weaviate.defaults
+    - ./.env
     image: cr.weaviate.io/semitechnologies/weaviate:1.39.13
     profiles:
     - weaviate
