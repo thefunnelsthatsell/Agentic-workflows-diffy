@@ -278,7 +278,7 @@ services:
         condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
-        required: false
+        required: true
       redis:
         condition: service_started
       agent_backend:
@@ -325,7 +325,7 @@ services:
         condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
-        required: false
+        required: true
       redis:
         condition: service_started
     volumes:
@@ -344,7 +344,7 @@ services:
         condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
-        required: false
+        required: true
       redis:
         condition: service_started
       agent_backend:
@@ -374,7 +374,7 @@ services:
         condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
-        required: false
+        required: true
       redis:
         condition: service_started
     healthcheck:
@@ -410,7 +410,7 @@ services:
     - -c
     - exec docker-entrypoint.sh postgres -c "max_connections=$$POSTGRES_MAX_CONNECTIONS" -c "shared_buffers=$$POSTGRES_SHARED_BUFFERS" -c "work_mem=$$POSTGRES_WORK_MEM" -c "maintenance_work_mem=$$POSTGRES_MAINTENANCE_WORK_MEM" -c "effective_cache_size=$$POSTGRES_EFFECTIVE_CACHE_SIZE" -c "statement_timeout=$$POSTGRES_STATEMENT_TIMEOUT" -c "idle_in_transaction_session_timeout=$$POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT"
     volumes:
-    - db_postgres_data:/var/lib/postgresql/data
+    - db_postgres_data_v2:/var/lib/postgresql/data
     healthcheck:
       test:
       - CMD-SHELL
@@ -419,6 +419,11 @@ services:
       timeout: 5s
       retries: 60
       start_period: 60s
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD_missing}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
+      PGDATA: /var/lib/postgresql/data/pgdata
   redis:
     env_file:
     - path: ./envs/databases/redis.env
@@ -521,7 +526,7 @@ services:
     depends_on:
       db_postgres:
         condition: service_healthy
-        required: false
+        required: true
   agent_backend:
     image: langgenius/dify-agent-backend:1.18.0
     restart: always
@@ -642,3 +647,4 @@ volumes:
   dify_agent_local_sandbox_home: null
   dify_agent_local_sandbox_workspace: null
   db_postgres_data: {}
+  db_postgres_data_v2: {}
