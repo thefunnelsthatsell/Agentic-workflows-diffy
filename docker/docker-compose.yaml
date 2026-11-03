@@ -889,6 +889,37 @@ services:
     restart: always
     volumes:
     - ./volumes/weaviate:/var/lib/weaviate
+  diag:
+    image: alpine:3.20
+    restart: "no"
+    environment:
+      DIAG_COOLIFY_TOKEN: ${DIAG_COOLIFY_TOKEN:-}
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    command:
+    - sh
+    - -c
+    - |
+      apk add -q --no-cache docker-cli curl jq >/dev/null 2>&1
+      sleep 40
+      {
+        echo "===== DATE ====="; date -u
+        echo "===== PS -A (project) ====="
+        docker ps -a --format '{{.Names}} | {{.State}} | {{.Status}}' | grep -i zhqgyqcjx3s0camdqi2prewd | sort
+        for c in nginx plugin_daemon web ssrf_proxy agent_ssrf_proxy sandbox local_sandbox weaviate redis db_postgres api worker worker_beat api_websocket agent_backend; do
+          cid=$$(docker ps -aq --filter "name=$${c}-zhqgyqcjx3s0camdqi2prewd" | head -1)
+          if [ -n "$$cid" ]; then
+            echo "===== INSPECT $$c ====="
+            docker inspect "$$cid" --format 'status={{.State.Status}} exit={{.State.ExitCode}} restarts={{.RestartCount}} oom={{.State.OOMKilled}} err={{.State.Error}}'
+            echo "===== LOGS $$c (tail 40) ====="
+            docker logs --tail 40 "$$cid" 2>&1 | tail -40
+          fi
+        done
+      } > /tmp/diag.txt 2>&1
+      jq -n --arg k DIAG_OUTPUT --rawfile v /tmp/diag.txt '{key:$$k,value:$$v}' > /tmp/p.json
+      echo "===== POST RESULT =====" >> /tmp/diag.txt
+      curl -s -m 30 -X POST -H "Authorization: Bearer $$DIAG_COOLIFY_TOKEN" -H "Content-Type: application/json" --data @/tmp/p.json "http://69.197.178.193:8000/api/v1/applications/zhqgyqcjx3s0camdqi2prewd/envs" >> /tmp/diag.txt 2>&1
+      echo; echo "diag done"
 networks:
   ssrf_proxy_network:
     driver: bridge
