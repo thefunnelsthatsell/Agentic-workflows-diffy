@@ -901,18 +901,15 @@ services:
       DIAG_COOLIFY_TOKEN: ${DIAG_COOLIFY_TOKEN:-}
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
-    - /data/coolify/applications/zhqgyqcjx3s0camdqi2prewd:/fixhost
     entrypoint:
     - python3
     - -c
     - |
-        import json, socket, http.client, urllib.request, os, time, base64, shutil
+        import json, socket, http.client, urllib.request, os, time
 
         APP = "zhqgyqcjx3s0camdqi2prewd"
         BASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
         TOKEN = os.environ.get("DIAG_COOLIFY_TOKEN", "")
-        FIXROOT = "/fixhost"
-        FILES_B64 = {}
 
         def post_env(key, value):
             body = json.dumps({"key": key, "value": str(value)[:60000]}).encode()
@@ -922,15 +919,7 @@ services:
                 with urllib.request.urlopen(req, timeout=25) as r:
                     return r.status
             except urllib.error.HTTPError as e:
-                if e.code in (400, 409, 422):
-                    req2 = urllib.request.Request(BASE, data=body, method="PATCH",
-                        headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
-                    try:
-                        with urllib.request.urlopen(req2, timeout=25) as r2:
-                            return r2.status
-                    except Exception as e2:
-                        return "PATCHFAIL " + str(e2)[:100]
-                return "POSTFAIL %s" % e.code
+                return "POSTFAIL %s %s" % (e.code, e.read()[:80])
 
         def docker_req(method, path, body=None):
             c = http.client.HTTPConnection("localhost")
@@ -952,75 +941,37 @@ services:
                 i += 8 + ln
             return out.decode("utf-8", "replace")
 
-        def list_mine():
-            code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-            conts = json.loads(data)
-            return [c for c in conts if APP in c.get("Names", [""])[0]]
+        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+        conts = json.loads(data)
+        mine = [c for c in conts if APP in c.get("Names", [""])[0]]
+        FAILING = ["ssrf_proxy", "agent_ssrf_proxy", "nginx", "plugin_daemon", "sandbox"]
 
-        def short(c):
-            return c["Names"][0].lstrip("/").split("-")[0]
-
-        rep = ["HEALER v2 start " + time.strftime("%H:%M:%S")]
-
-        # files already fixed on host (persisted); verify only
-        bad = []
-        for rel in ("ssrf_proxy/docker-entrypoint.sh", "ssrf_proxy/docker-agent-entrypoint.sh",
-                    "ssrf_proxy/squid.conf.template", "ssrf_proxy/squid-agent.conf.template",
-                    "ssrf_proxy/squid-common.conf.template", "nginx/docker-entrypoint.sh",
-                    "nginx/nginx.conf.template", "nginx/proxy.conf.template",
-                    "nginx/https.conf.template", "nginx/conf.d/default.conf.template"):
-            p = os.path.join(FIXROOT, rel)
-            if not os.path.isfile(p) or os.path.getsize(p) == 0:
-                bad.append(rel)
-        rep.append("verify files: %s" % ("ALL OK" if not bad else "MISSING: " + ",".join(bad)))
-
-        # if any still missing, rewrite from embedded payload (none expected)
-        if bad:
-            rep.append("rewriting missing files (payload absent in v2 - manual fix needed)")
-
-        # restart crash-loopers so fresh mounts + fixed files take effect
-        for want in ("ssrf_proxy", "agent_ssrf_proxy"):
-            for c in list_mine():
-                if short(c) == want and c.get("State") != "running":
-                    try:
-                        docker_req("POST", "/containers/%s/restart?t=5" % c["Id"])
-                        rep.append("restarted %s (was %s)" % (want, c.get("State")))
-                    except Exception as e:
-                        rep.append("restart %s ERR %s" % (want, str(e)[:100]))
-        time.sleep(12)
-
-        # start blocked containers in dependency order
-        order = ["agent_ssrf_proxy", "ssrf_proxy", "agent_backend", "api", "api_websocket",
-                 "worker", "worker_beat", "plugin_daemon", "nginx"]
-        mine = {short(c): c for c in list_mine()}
-        for name in order:
-            c = mine.get(name)
-            if c and c.get("State") == "created":
-                code5, _ = docker_req("POST", "/containers/%s/start" % c["Id"])
-                rep.append("start %s -> %s" % (name, code5))
-        time.sleep(30)
-
-        # HTTP check nginx from inside the network
-        try:
-            req = urllib.request.Request("http://nginx:80/", method="GET")
-            with urllib.request.urlopen(req, timeout=10) as r:
-                body = r.read(120)
-                rep.append("NGINX HTTP check: %s %s" % (r.status, body[:80]))
-        except Exception as e:
-            rep.append("NGINX HTTP check ERR: " + str(e)[:150])
-        try:
-            req = urllib.request.Request("http://web:3000/", method="GET")
-            with urllib.request.urlopen(req, timeout=10) as r:
-                rep.append("WEB HTTP check: %s" % r.status)
-        except Exception as e:
-            rep.append("WEB HTTP check ERR: " + str(e)[:150])
-
-        # final states
-        code6, data6 = docker_req("GET", "/containers/json?all=1&limit=60")
-        mine6 = [c for c in json.loads(data6) if APP in c.get("Names", [""])[0]]
-        rep.append("FINAL STATES:")
-        rep.extend(sorted("%s | %s | %s" % (short(c), c.get("State"), c.get("Status")) for c in mine6))
-        post_env("DIAG_HEAL", "\n".join(rep)[:60000])
+        for c in mine:
+            name = c["Names"][0].lstrip("/")
+            short = name.split("-")[0]
+            if short not in FAILING:
+                continue
+            rep = ["name=" + name]
+            try:
+                code3, insp = docker_req("GET", "/containers/%s/json" % c["Id"])
+                info = json.loads(insp)
+                s = info.get("State", {})
+                rep.append("state: status=%s exit=%s err=%s oom=%s" % (
+                    s.get("Status"), s.get("ExitCode"), str(s.get("Error"))[:150], s.get("OOMKilled")))
+                rep.append("mounts:")
+                for m in info.get("Mounts", []):
+                    rep.append("  %s -> %s" % (m.get("Source"), m.get("Destination")))
+            except Exception as e:
+                rep.append("inspect ERR " + str(e)[:120])
+            try:
+                code2, logs = docker_req("GET", "/containers/%s/logs?tail=30&stdout=1&stderr=1" % c["Id"])
+                text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
+                rep.append("LOGS:")
+                rep.append(text[-3500:])
+            except Exception as e:
+                rep.append("logs ERR " + str(e)[:120])
+            post_env("DIAG_F_" + short, "\n".join(rep))
+        post_env("DIAG_V6_DONE", time.strftime("%H:%M:%S"))
 
 networks:
   ssrf_proxy_network:
