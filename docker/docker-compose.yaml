@@ -901,27 +901,11 @@ services:
     - python3
     - -c
     - |
-        import json, socket, http.client, urllib.request, os, time, base64, shutil, stat
-
-        FILES_B64 = {
-        "ssrf_proxy/docker-entrypoint.sh": "IyEvYmluL2Jhc2gKCiMgTW9kaWZpZWQgYmFzZWQgb24gU3F1aWQgT0NJIGltYWdlIGVudHJ5cG9pbnQKCiMgVGhpcyBlbnRyeXBvaW50IGFpbXMgdG8gZm9yd2FyZCB0aGUgc3F1aWQgbG9ncyB0byBzdGRvdXQgdG8gYXNzaXN0IHVzZXJzIG9mCiMgY29tbW9uIGNvbnRhaW5lciByZWxhdGVkIHRvb2xpbmcgKGUuZy4sIGt1YmVybmV0ZXMsIGRvY2tlci1jb21wb3NlLCBldGMpIHRvCiMgYWNjZXNzIHRoZSBzZXJ2aWNlIGxvZ3MuCgojIE1vcmVvdmVyLCBpdCBpbnZva2VzIHRoZSBzcXVpZCBiaW5hcnksIGxlYXZpbmcgYWxsIHRoZSBkZXNpcmVkIHBhcmFtZXRlcnMgdG8KIyBiZSBwcm92aWRlZCBieSB0aGUgImNvbW1hbmQiIHBhc3NlZCB0byB0aGUgc3Bhd25lZCBjb250YWluZXIuIElmIG5vIGNvbW1hbmQKIyBpcyBwcm92aWRlZCBieSB0aGUgdXNlciwgdGhlIGRlZmF1bHQgYmVoYXZpb3IgKGFzIHBlciB0aGUgQ01EIHN0YXRlbWVudCBpbgojIHRoZSBEb2NrZXJmaWxlKSB3aWxsIGJlIHRvIHVzZSBVYnVudHUncyBkZWZhdWx0IGNvbmZpZ3VyYXRpb24gWzFdIGFuZCBydW4KIyBzcXVpZCB3aXRoIHRoZSAiLU5ZQyIgb3B0aW9ucyB0byBtaW1pYyB0aGUgYmVoYXZpb3Igb2YgdGhlIFVidW50dSBwcm92aWRlZAojIHN5c3RlbWQgdW5pdC4KCiMgWzFdIFRoZSBkZWZhdWx0IGNvbmZpZ3VyYXRpb24gaXMgY2hhbmdlZCBpbiB0aGUgRG9ja2VyZmlsZSB0byBhbGxvdyBsb2NhbAojIG5ldHdvcmsgY29ubmVjdGlvbnMuIFNlZSB0aGUgRG9ja2VyZmlsZSBmb3IgZnVydGhlciBpbmZvcm1hdGlvbi4KCmVjaG8gIltFTlRSWVBPSU5UXSByZS1jcmVhdGUgc25ha2VvaWwgc2VsZi1zaWduZWQgY2VydGlmaWNhdGUgcmVtb3ZlZCBpbiB0aGUgYnVpbGQgcHJvY2VzcyIKaWYgWyAhIC1mIC9ldGMvc3NsL3ByaXZhdGUvc3NsLWNlcnQtc25ha2VvaWwua2V5IF07IHRoZW4KICAgIC91c3Ivc2Jpbi9tYWtlLXNzbC1jZXJ0IGdlbmVyYXRlLWRlZmF1bHQtc25ha2VvaWwgLS1mb3JjZS1vdmVyd3JpdGUgPiAvZGV2L251bGwgMj4mMQpmaQoKdGFpbCAtRiAvdmFyL2xvZy9zcXVpZC9hY2Nlc3MubG9nIDI+L2Rldi9udWxsICYKdGFpbCAtRiAvdmFyL2xvZy9zcXVpZC9lcnJvci5sb2cgMj4vZGV2L251bGwgJgp0YWlsIC1GIC92YXIvbG9nL3NxdWlkL3N0b3JlLmxvZyAyPi9kZXYvbnVsbCAmCnRhaWwgLUYgL3Zhci9sb2cvc3F1aWQvY2FjaGUubG9nIDI+L2Rldi9udWxsICYKCkFMTE9XX1BSSVZBVEVfQ09ORj0vZXRjL3NxdWlkL2RpZnlfYWxsb3dfcHJpdmF0ZS5jb25mClNBTkRCT1hfUFJPWFlfQ09ORj0vZXRjL3NxdWlkL2RpZnlfc2FuZGJveF9wcm94eS5jb25mCgp3cml0ZV9vcHRpb25hbF9wcml2YXRlX2FsbG93bGlzdCgpIHsKICAgIGxvY2FsIGVudl9uYW1lPSIkMSIKICAgIGxvY2FsIGFjbF9uYW1lPSIkMiIKICAgIGxvY2FsIGFjbF90eXBlPSIkMyIKICAgIGxvY2FsIHJhd192YWx1ZXM9IiR7IWVudl9uYW1lOi19IgoKICAgIHJhd192YWx1ZXM9IiR7cmF3X3ZhbHVlcy8vLC8gfSIKCiAgICBpZiBbIC16ICIke3Jhd192YWx1ZXMvL1tbOnNwYWNlOl1dL30iIF07IHRoZW4KICAgICAgICByZXR1cm4KICAgIGZpCgogICAgcHJpbnRmICdhY2wgJXMgJXMnICIkYWNsX25hbWUiICIkYWNsX3R5cGUiID4+ICIkQUxMT1dfUFJJVkFURV9DT05GIgogICAgZm9yIHZhbHVlIGluICRyYXdfdmFsdWVzOyBkbwogICAgICAgIHByaW50ZiAnICVzJyAiJHZhbHVlIiA+PiAiJEFMTE9XX1BSSVZBVEVfQ09ORiIKICAgIGRvbmUKICAgIHByaW50ZiAnXG5odHRwX2FjY2VzcyBhbGxvdyBjbGllbnRfbG9jYWxuZXQgJXNcbicgIiRhY2xfbmFtZSIgPj4gIiRBTExPV19QUklWQVRFX0NPTkYiCn0KCnsKICAgIGVjaG8gIiMgR2VuZXJhdGVkIGJ5IGRvY2tlci1lbnRyeXBvaW50LnNoLiIKICAgIGVjaG8gIiMgQWxsb3dzIHNlbGVjdGVkIHByaXZhdGUgdGFyZ2V0cyBiZWZvcmUgdGhlIGRlZmF1bHQgcHJpdmF0ZS1uZXR3b3JrIGRlbnkgcnVsZS4iCn0gPiAiJEFMTE9XX1BSSVZBVEVfQ09ORiIKd3JpdGVfb3B0aW9uYWxfcHJpdmF0ZV9hbGxvd2xpc3QgIlNTUkZfUFJPWFlfQUxMT1dfUFJJVkFURV9JUFMiICJkaWZ5X2FsbG93ZWRfcHJpdmF0ZV9uZXR3b3JrcyIgImRzdCIKd3JpdGVfb3B0aW9uYWxfcHJpdmF0ZV9hbGxvd2xpc3QgIlNTUkZfUFJPWFlfQUxMT1dfUFJJVkFURV9ET01BSU5TIiAiZGlmeV9hbGxvd2VkX3ByaXZhdGVfZG9tYWlucyIgImRzdGRvbWFpbiIKCnsKICAgIGVjaG8gIiMgR2VuZXJhdGVkIGJ5IGRvY2tlci1lbnRyeXBvaW50LnNoLiIKICAgIGVjaG8gIiMgRW5hYmxlcyB0aGUgbWlkZGxld2FyZS1vbmx5IHNhbmRib3ggaG9zdCBicmlkZ2Ugd2hlbiBjb25maWd1cmVkLiIKfSA+ICIkU0FOREJPWF9QUk9YWV9DT05GIgoKaWYgWyAtbiAiJHtTU1JGX1NBTkRCT1hfUFJPWFlfUE9SVDotfSIgXTsgdGhlbgogICAgc2FuZGJveF9wcm94eV9ob3N0PSIke1NTUkZfU0FOREJPWF9QUk9YWV9IT1NUOi1zYW5kYm94fSIKICAgIHNhbmRib3hfcHJveHlfdGFyZ2V0X3BvcnQ9IiR7U0FOREJPWF9QT1JUOi04MTk0fSIKCiAgICB7CiAgICAgICAgcHJpbnRmICdodHRwX3BvcnQgJXMgYWNjZWwgdmhvc3RcbicgIiRTU1JGX1NBTkRCT1hfUFJPWFlfUE9SVCIKICAgICAgICBwcmludGYgJ2NhY2hlX3BlZXIgJXMgcGFyZW50ICVzIDAgbm8tcXVlcnkgb3JpZ2luc2VydmVyIG5hbWU9ZGlmeV9zYW5kYm94XG4nIFwKICAgICAgICAgICAgIiRzYW5kYm94X3Byb3h5X2hvc3QiIFwKICAgICAgICAgICAgIiRzYW5kYm94X3Byb3h5X3RhcmdldF9wb3J0IgogICAgICAgIHByaW50ZiAnYWNsIGRpZnlfc2FuZGJveF9wcm94eV9wb3J0IGxvY2FscG9ydCAlc1xuJyAiJFNTUkZfU0FOREJPWF9QUk9YWV9QT1JUIgogICAgICAgIHByaW50ZiAnaHR0cF9hY2Nlc3MgYWxsb3cgZGlmeV9zYW5kYm94X3Byb3h5X3BvcnRcbicKICAgIH0gPj4gIiRTQU5EQk9YX1BST1hZX0NPTkYiCmZpCgojIFJlcGxhY2UgZW52aXJvbm1lbnQgdmFyaWFibGVzIGluIGEgdGVtcGxhdGUgZmlsZS4KZXhwYW5kX2VudigpIHsKICAgIGF3ayAnewogICAgICAgIHdoaWxlKG1hdGNoKCQwLCAvXCR7W0EtWmEtel9dW0EtWmEtel8wLTldKn0vKSkgewogICAgICAgICAgICB2YXIgPSBzdWJzdHIoJDAsIFJTVEFSVCsyLCBSTEVOR1RILTMpCiAgICAgICAgICAgIHZhbCA9IEVOVklST05bdmFyXQogICAgICAgICAgICAkMCA9IHN1YnN0cigkMCwgMSwgUlNUQVJULTEpIHZhbCBzdWJzdHIoJDAsIFJTVEFSVCtSTEVOR1RIKQogICAgICAgIH0KICAgICAgICBwcmludAogICAgfScgIiQxIgp9CgojIFJlcGxhY2UgZW52aXJvbm1lbnQgdmFyaWFibGVzIGluIHRoZSB0ZW1wbGF0ZXMgYW5kIG91dHB1dCB0byBzcXVpZC5jb25mCmVjaG8gIltFTlRSWVBPSU5UXSByZXBsYWNpbmcgZW52aXJvbm1lbnQgdmFyaWFibGVzIGluIHRoZSB0ZW1wbGF0ZXMiCmV4cGFuZF9lbnYgL2V0Yy9zcXVpZC9zcXVpZC5jb25mLnRlbXBsYXRlID4gL2V0Yy9zcXVpZC9zcXVpZC5jb25mCmV4cGFuZF9lbnYgL2V0Yy9zcXVpZC9kaWZ5X2NvbW1vbi5jb25mLnRlbXBsYXRlID4gL2V0Yy9zcXVpZC9kaWZ5X2NvbW1vbi5jb25mCgovdXNyL3NiaW4vc3F1aWQgLU56CmVjaG8gIltFTlRSWVBPSU5UXSBzdGFydGluZyBzcXVpZCIKL3Vzci9zYmluL3NxdWlkIC1mIC9ldGMvc3F1aWQvc3F1aWQuY29uZiAtTllDIDEK",
-        "ssrf_proxy/docker-agent-entrypoint.sh": "IyEvYmluL2Jhc2gKCnRhaWwgLUYgL3Zhci9sb2cvc3F1aWQvYWNjZXNzLmxvZyAyPi9kZXYvbnVsbCAmCnRhaWwgLUYgL3Zhci9sb2cvc3F1aWQvZXJyb3IubG9nIDI+L2Rldi9udWxsICYKdGFpbCAtRiAvdmFyL2xvZy9zcXVpZC9zdG9yZS5sb2cgMj4vZGV2L251bGwgJgp0YWlsIC1GIC92YXIvbG9nL3NxdWlkL2NhY2hlLmxvZyAyPi9kZXYvbnVsbCAmCgpBTExPV19QUklWQVRFX0NPTkY9L2V0Yy9zcXVpZC9kaWZ5X2FsbG93X3ByaXZhdGUuY29uZgoKd3JpdGVfb3B0aW9uYWxfcHJpdmF0ZV9hbGxvd2xpc3QoKSB7CiAgICBsb2NhbCBlbnZfbmFtZT0iJDEiCiAgICBsb2NhbCBhY2xfbmFtZT0iJDIiCiAgICBsb2NhbCBhY2xfdHlwZT0iJDMiCiAgICBsb2NhbCByYXdfdmFsdWVzPSIkeyFlbnZfbmFtZTotfSIKICAgIGxvY2FsIC1hIHRva2Vucz0oKQoKICAgIHJhd192YWx1ZXM9IiR7cmF3X3ZhbHVlcy8vLC8gfSIKICAgIHJhd192YWx1ZXM9IiR7cmF3X3ZhbHVlcy8vJCdcbicvIH0iCiAgICByYXdfdmFsdWVzPSIke3Jhd192YWx1ZXMvLyQnXHInLyB9IgoKICAgIGlmIFsgLXogIiR7cmF3X3ZhbHVlcy8vW1s6c3BhY2U6XV0vfSIgXTsgdGhlbgogICAgICAgIHJldHVybgogICAgZmkKCiAgICByZWFkIC1yIC1hIHRva2VucyA8PDwgIiRyYXdfdmFsdWVzIgoKICAgIHByaW50ZiAnYWNsICVzICVzJyAiJGFjbF9uYW1lIiAiJGFjbF90eXBlIiA+PiAiJEFMTE9XX1BSSVZBVEVfQ09ORiIKICAgIGZvciB2YWx1ZSBpbiAiJHt0b2tlbnNbQF19IjsgZG8KICAgICAgICBbIC16ICIke3ZhbHVlLy9bWzpzcGFjZTpdXS99IiBdICYmIGNvbnRpbnVlCiAgICAgICAgcHJpbnRmICcgJXMnICIkdmFsdWUiID4+ICIkQUxMT1dfUFJJVkFURV9DT05GIgogICAgZG9uZQogICAgcHJpbnRmICdcbmh0dHBfYWNjZXNzIGFsbG93IGNsaWVudF9sb2NhbG5ldCAlc1xuJyAiJGFjbF9uYW1lIiA+PiAiJEFMTE9XX1BSSVZBVEVfQ09ORiIKfQoKewogICAgZWNobyAiIyBHZW5lcmF0ZWQgYnkgZG9ja2VyLWFnZW50LWVudHJ5cG9pbnQuc2guIgogICAgZWNobyAiIyBBbGxvd3Mgc2VsZWN0ZWQgcHJpdmF0ZSB0YXJnZXRzIGJlZm9yZSB0aGUgZGVmYXVsdCBwcml2YXRlLW5ldHdvcmsgZGVueSBydWxlLiIKfSA+ICIkQUxMT1dfUFJJVkFURV9DT05GIgp3cml0ZV9vcHRpb25hbF9wcml2YXRlX2FsbG93bGlzdCAiU1NSRl9QUk9YWV9BTExPV19QUklWQVRFX0lQUyIgImRpZnlfYWxsb3dlZF9wcml2YXRlX25ldHdvcmtzIiAiZHN0Igp3cml0ZV9vcHRpb25hbF9wcml2YXRlX2FsbG93bGlzdCAiU1NSRl9QUk9YWV9BTExPV19QUklWQVRFX0RPTUFJTlMiICJkaWZ5X2FsbG93ZWRfcHJpdmF0ZV9kb21haW5zIiAiZHN0ZG9tYWluIgoKZXhwYW5kX2VudigpIHsKICAgIGF3ayAnewogICAgICAgIHdoaWxlKG1hdGNoKCQwLCAvXCR7W0EtWmEtel9dW0EtWmEtel8wLTldKn0vKSkgewogICAgICAgICAgICB2YXIgPSBzdWJzdHIoJDAsIFJTVEFSVCsyLCBSTEVOR1RILTMpCiAgICAgICAgICAgIHZhbCA9IEVOVklST05bdmFyXQogICAgICAgICAgICAkMCA9IHN1YnN0cigkMCwgMSwgUlNUQVJULTEpIHZhbCBzdWJzdHIoJDAsIFJTVEFSVCtSTEVOR1RIKQogICAgICAgIH0KICAgICAgICBwcmludAogICAgfScgIiQxIgp9CgplY2hvICJbRU5UUllQT0lOVF0gcmVwbGFjaW5nIGVudmlyb25tZW50IHZhcmlhYmxlcyBpbiB0aGUgdGVtcGxhdGVzIgpleHBhbmRfZW52IC9ldGMvc3F1aWQvc3F1aWQuY29uZi50ZW1wbGF0ZSA+IC9ldGMvc3F1aWQvc3F1aWQuY29uZgpleHBhbmRfZW52IC9ldGMvc3F1aWQvZGlmeV9jb21tb24uY29uZi50ZW1wbGF0ZSA+IC9ldGMvc3F1aWQvZGlmeV9jb21tb24uY29uZgoKL3Vzci9zYmluL3NxdWlkIC1OegplY2hvICJbRU5UUllQT0lOVF0gc3RhcnRpbmcgc3F1aWQiCi91c3Ivc2Jpbi9zcXVpZCAtZiAvZXRjL3NxdWlkL3NxdWlkLmNvbmYgLU5ZQyAxCg==",
-        "ssrf_proxy/squid.conf.template": "aW5jbHVkZSAvZXRjL3NxdWlkL2RpZnlfY29tbW9uLmNvbmYKCmFjbCBhbGxvd2VkX2RvbWFpbnMgZHN0ZG9tYWluIC5tYXJrZXRwbGFjZS5kaWZ5LmFpCgpodHRwX3BvcnQgJHtIVFRQX1BPUlR9CgpodHRwX2FjY2VzcyBkZW55ICFTYWZlX3BvcnRzCmh0dHBfYWNjZXNzIGRlbnkgQ09OTkVDVCAhU1NMX3BvcnRzCmh0dHBfYWNjZXNzIGFsbG93IGxvY2FsaG9zdCBtYW5hZ2VyCmh0dHBfYWNjZXNzIGRlbnkgbWFuYWdlcgppbmNsdWRlIC9ldGMvc3F1aWQvZGlmeV9zYW5kYm94X3Byb3h5LmNvbmYKaW5jbHVkZSAvZXRjL3NxdWlkL2RpZnlfYWxsb3dfcHJpdmF0ZS5jb25mCmh0dHBfYWNjZXNzIGRlbnkgdG9fcHJpdmF0ZV9uZXR3b3JrcwpodHRwX2FjY2VzcyBhbGxvdyBhbGxvd2VkX2RvbWFpbnMKaHR0cF9hY2Nlc3MgYWxsb3cgY2xpZW50X2xvY2FsbmV0Cmh0dHBfYWNjZXNzIGFsbG93IGxvY2FsaG9zdApodHRwX2FjY2VzcyBkZW55IGFsbAo=",
-        "ssrf_proxy/squid-agent.conf.template": "IyBEZWRpY2F0ZWQgU3F1aWQgY29uZmlnIGZvciB0aGUgZGlmeS1hZ2VudCBsb2NhbF9zYW5kYm94IFNTUkYgcHJveHkuCiMgQWxsIHRyYWZmaWMgb24gdGhpcyBwcm94eSBpcyByZXN0cmljdGVkIHRvOgojICAgLSBhZ2VudF9iYWNrZW5kIC9hZ2VudC1zdHViLyogZW5kcG9pbnRzCiMgICAtIERpZnkgQVBJIC9maWxlcy8qIGVuZHBvaW50cyAoc2lnbmVkIHVwbG9hZC9kb3dubG9hZCBVUkxzKQojIEV4dGVybmFsIGludGVybmV0IGlzIGFsbG93ZWQ7IGFsbCBvdGhlciBwcml2YXRlLW5ldHdvcmsgZGVzdGluYXRpb25zIGFyZSBkZW5pZWQuCgppbmNsdWRlIC9ldGMvc3F1aWQvZGlmeV9jb21tb24uY29uZgoKYWNsIGRzdF9hZ2VudF9iYWNrZW5kIGRzdGRvbWFpbiBhZ2VudF9iYWNrZW5kCmFjbCBkc3RfZGlmeV9hcGkgZHN0ZG9tYWluIGFwaQphY2wgcGF0aF9maWxlcyB1cmxwYXRoX3JlZ2V4IC1pIF4vZmlsZXMvCmFjbCBwYXRoX2FnZW50X3N0dWIgdXJscGF0aF9yZWdleCAtaSBeL2FnZW50LXN0dWIvCgpodHRwX3BvcnQgJHtIVFRQX1BPUlR9CgpodHRwX2FjY2VzcyBkZW55ICFTYWZlX3BvcnRzCmh0dHBfYWNjZXNzIGRlbnkgQ09OTkVDVCAhU1NMX3BvcnRzCmh0dHBfYWNjZXNzIGFsbG93IGRzdF9hZ2VudF9iYWNrZW5kIHBhdGhfYWdlbnRfc3R1YgpodHRwX2FjY2VzcyBhbGxvdyBkc3RfZGlmeV9hcGkgcGF0aF9maWxlcwppbmNsdWRlIC9ldGMvc3F1aWQvZGlmeV9hbGxvd19wcml2YXRlLmNvbmYKaHR0cF9hY2Nlc3MgZGVueSB0b19wcml2YXRlX25ldHdvcmtzCmh0dHBfYWNjZXNzIGFsbG93IGFsbAo=",
-        "ssrf_proxy/squid-common.conf.template": "IyBTaGFyZWQgU3F1aWQgY29uZmlndXJhdGlvbiB1c2VkIGJ5IGJvdGggc3NyZl9wcm94eSBhbmQgYWdlbnRfc3NyZl9wcm94eS4KCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMgQUNMIERlZmluaXRpb25zICMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCmFjbCBjbGllbnRfbG9jYWxuZXQgc3JjIDAuMC4wLjEtMC4yNTUuMjU1LjI1NQkjIFJGQyAxMTIyICJ0aGlzIiBuZXR3b3JrIChMQU4pCmFjbCBjbGllbnRfbG9jYWxuZXQgc3JjIDEwLjAuMC4wLzgJCSMgUkZDIDE5MTggbG9jYWwgcHJpdmF0ZSBuZXR3b3JrIChMQU4pCmFjbCBjbGllbnRfbG9jYWxuZXQgc3JjIDEwMC42NC4wLjAvMTAJCSMgUkZDIDY1OTggc2hhcmVkIGFkZHJlc3Mgc3BhY2UgKENHTikKYWNsIGNsaWVudF9sb2NhbG5ldCBzcmMgMTY5LjI1NC4wLjAvMTYgCSMgUkZDIDM5MjcgbGluay1sb2NhbCAoZGlyZWN0bHkgcGx1Z2dlZCkgbWFjaGluZXMKYWNsIGNsaWVudF9sb2NhbG5ldCBzcmMgMTcyLjE2LjAuMC8xMgkJIyBSRkMgMTkxOCBsb2NhbCBwcml2YXRlIG5ldHdvcmsgKExBTikKYWNsIGNsaWVudF9sb2NhbG5ldCBzcmMgMTkyLjE2OC4wLjAvMTYJCSMgUkZDIDE5MTggbG9jYWwgcHJpdmF0ZSBuZXR3b3JrIChMQU4pCmFjbCBjbGllbnRfbG9jYWxuZXQgc3JjIGZjMDA6Oi83ICAgICAgIAkjIFJGQyA0MTkzIGxvY2FsIHByaXZhdGUgbmV0d29yayByYW5nZQphY2wgY2xpZW50X2xvY2FsbmV0IHNyYyBmZTgwOjovMTAgICAgICAJIyBSRkMgNDI5MSBsaW5rLWxvY2FsIChkaXJlY3RseSBwbHVnZ2VkKSBtYWNoaW5lcwoKYWNsIHRvX3ByaXZhdGVfbmV0d29ya3MgZHN0IDAuMC4wLjAvOAphY2wgdG9fcHJpdmF0ZV9uZXR3b3JrcyBkc3QgMTAuMC4wLjAvOAphY2wgdG9fcHJpdmF0ZV9uZXR3b3JrcyBkc3QgMTAwLjY0LjAuMC8xMAphY2wgdG9fcHJpdmF0ZV9uZXR3b3JrcyBkc3QgMTI3LjAuMC4wLzgKYWNsIHRvX3ByaXZhdGVfbmV0d29ya3MgZHN0IDE2OS4yNTQuMC4wLzE2CmFjbCB0b19wcml2YXRlX25ldHdvcmtzIGRzdCAxNzIuMTYuMC4wLzEyCmFjbCB0b19wcml2YXRlX25ldHdvcmtzIGRzdCAxOTIuMTY4LjAuMC8xNgphY2wgdG9fcHJpdmF0ZV9uZXR3b3JrcyBkc3QgMjI0LjAuMC4wLzQKYWNsIHRvX3ByaXZhdGVfbmV0d29ya3MgZHN0IDI0MC4wLjAuMC80CmFjbCB0b19wcml2YXRlX25ldHdvcmtzIGRzdCA6Oi8xMjgKYWNsIHRvX3ByaXZhdGVfbmV0d29ya3MgZHN0IDo6MS8xMjgKYWNsIHRvX3ByaXZhdGVfbmV0d29ya3MgZHN0IDo6ZmZmZjowOjAvOTYgICAgIyBJUHY0LW1hcHBlZAphY2wgdG9fcHJpdmF0ZV9uZXR3b3JrcyBkc3QgOjovOTYgICAgICAgICAgICAjIGRlcHJlY2F0ZWQgSVB2NC1jb21wYXRpYmxlCmFjbCB0b19wcml2YXRlX25ldHdvcmtzIGRzdCBmYzAwOjovNwphY2wgdG9fcHJpdmF0ZV9uZXR3b3JrcyBkc3QgZmU4MDo6LzEwCgphY2wgU1NMX3BvcnRzIHBvcnQgNDQzCmFjbCBTYWZlX3BvcnRzIHBvcnQgODAJCSMgaHR0cAphY2wgU2FmZV9wb3J0cyBwb3J0IDIxCQkjIGZ0cAphY2wgU2FmZV9wb3J0cyBwb3J0IDQ0MwkJIyBodHRwcwphY2wgU2FmZV9wb3J0cyBwb3J0IDcwCQkjIGdvcGhlcgphY2wgU2FmZV9wb3J0cyBwb3J0IDIxMAkJIyB3YWlzCmFjbCBTYWZlX3BvcnRzIHBvcnQgMTAyNS02NTUzNQkjIHVucmVnaXN0ZXJlZCBwb3J0cwphY2wgU2FmZV9wb3J0cyBwb3J0IDI4MAkJIyBodHRwLW1nbXQKYWNsIFNhZmVfcG9ydHMgcG9ydCA0ODgJCSMgZ3NzLWh0dHAKYWNsIFNhZmVfcG9ydHMgcG9ydCA1OTEJCSMgZmlsZW1ha2VyCmFjbCBTYWZlX3BvcnRzIHBvcnQgNzc3CQkjIG11bHRpbGluZyBodHRwCmFjbCBDT05ORUNUIG1ldGhvZCBDT05ORUNUCgojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIENvbW1vbiBQYXJhbWV0ZXJzICMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCgp0Y3Bfb3V0Z29pbmdfYWRkcmVzcyAwLjAuMC4wCgojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIFByb3h5IFNlcnZlciAjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwpjb3JlZHVtcF9kaXIgJHtDT1JFRFVNUF9ESVJ9CnJlZnJlc2hfcGF0dGVybiBeZnRwOgkJMTQ0MAkyMCUJMTAwODAKcmVmcmVzaF9wYXR0ZXJuIF5nb3BoZXI6CTE0NDAJMCUJMTQ0MApyZWZyZXNoX3BhdHRlcm4gLWkgKC9jZ2ktYmluL3xcPykgMAkwJQkwCnJlZnJlc2hfcGF0dGVybiBcLyhQYWNrYWdlc3xTb3VyY2VzKSh8XC5iejJ8XC5nenxcLnh6KSQgMCAwJSAwIHJlZnJlc2gtaW1zCnJlZnJlc2hfcGF0dGVybiBcL1JlbGVhc2UofFwuZ3BnKSQgMCAwJSAwIHJlZnJlc2gtaW1zCnJlZnJlc2hfcGF0dGVybiBcL0luUmVsZWFzZSQgMCAwJSAwIHJlZnJlc2gtaW1zCnJlZnJlc2hfcGF0dGVybiBcLyhUcmFuc2xhdGlvbi0uKikofFwuYnoyfFwuZ3p8XC54eikkIDAgMCUgMCByZWZyZXNoLWltcwpyZWZyZXNoX3BhdHRlcm4gLgkJMAkyMCUJNDMyMAoKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyBSZXF1ZXN0IEJ1ZmZlciAjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwpjbGllbnRfcmVxdWVzdF9idWZmZXJfbWF4X3NpemUgMTAwIE1CCgojIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIFBlcmZvcm1hbmNlICYgQ29uY3VycmVuY3kgIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIwptYXhfZmlsZWRlc2NyaXB0b3JzIDY1NTM2CmNvbm5lY3RfdGltZW91dCAzMCBzZWNvbmRzCnJlcXVlc3RfdGltZW91dCAyIG1pbnV0ZXMKcmVhZF90aW1lb3V0IDIgbWludXRlcwpjbGllbnRfbGlmZXRpbWUgNSBtaW51dGVzCnNodXRkb3duX2xpZmV0aW1lIDMwIHNlY29uZHMKCnNlcnZlcl9wZXJzaXN0ZW50X2Nvbm5lY3Rpb25zIG9uCmNsaWVudF9wZXJzaXN0ZW50X2Nvbm5lY3Rpb25zIG9uCnBlcnNpc3RlbnRfcmVxdWVzdF90aW1lb3V0IDMwIHNlY29uZHMKcGNvbm5fdGltZW91dCAxIG1pbnV0ZQoKY2xpZW50X2RiIG9uCnNlcnZlcl9pZGxlX3Bjb25uX3RpbWVvdXQgMiBtaW51dGVzCmNsaWVudF9pZGxlX3Bjb25uX3RpbWVvdXQgMiBtaW51dGVzCgpxdWlja19hYm9ydF9taW4gMTYgS0IKcXVpY2tfYWJvcnRfbWF4IDE2IE1CCnF1aWNrX2Fib3J0X3BjdCA5NQoKbWVtb3J5X2NhY2hlX21vZGUgZGlzawpjYWNoZV9tZW0gMjU2IE1CCm1heGltdW1fb2JqZWN0X3NpemVfaW5fbWVtb3J5IDUxMiBLQgoKZG5zX3RpbWVvdXQgMzAgc2Vjb25kcwpkbnNfcmV0cmFuc21pdF9pbnRlcnZhbCA1IHNlY29uZHMKCmxvZ2Zvcm1hdCBkaWZ5X2xvZyAldHMuJTAzdHUgJTZ0ciAlPmEgJVNzLyUwMz5IcyAlPHN0ICVybSAlcnUgJVt1biAlU2gvJTxhICVtdAphY2Nlc3NfbG9nIGRhZW1vbjovdmFyL2xvZy9zcXVpZC9hY2Nlc3MubG9nIGRpZnlfbG9nCmxvZ2ZpbGVfcm90YXRlIDEwCg==",
-        "nginx/docker-entrypoint.sh": "IyEvYmluL2Jhc2gKCkhUVFBTX0NPTkZJRz0nJwoKaWYgWyAiJHtOR0lOWF9IVFRQU19FTkFCTEVEfSIgPSAidHJ1ZSIgXTsgdGhlbgogICAgIyBDaGVjayBpZiB0aGUgY2VydGlmaWNhdGUgYW5kIGtleSBmaWxlcyBmb3IgdGhlIHNwZWNpZmllZCBkb21haW4gZXhpc3QKICAgIGlmIFsgLW4gIiR7Q0VSVEJPVF9ET01BSU59IiBdICYmIFwKICAgICAgIFsgLWYgIi9ldGMvbGV0c2VuY3J5cHQvbGl2ZS8ke0NFUlRCT1RfRE9NQUlOfS8ke05HSU5YX1NTTF9DRVJUX0ZJTEVOQU1FfSIgXSAmJiBcCiAgICAgICBbIC1mICIvZXRjL2xldHNlbmNyeXB0L2xpdmUvJHtDRVJUQk9UX0RPTUFJTn0vJHtOR0lOWF9TU0xfQ0VSVF9LRVlfRklMRU5BTUV9IiBdOyB0aGVuCiAgICAgICAgU1NMX0NFUlRJRklDQVRFX1BBVEg9Ii9ldGMvbGV0c2VuY3J5cHQvbGl2ZS8ke0NFUlRCT1RfRE9NQUlOfS8ke05HSU5YX1NTTF9DRVJUX0ZJTEVOQU1FfSIKICAgICAgICBTU0xfQ0VSVElGSUNBVEVfS0VZX1BBVEg9Ii9ldGMvbGV0c2VuY3J5cHQvbGl2ZS8ke0NFUlRCT1RfRE9NQUlOfS8ke05HSU5YX1NTTF9DRVJUX0tFWV9GSUxFTkFNRX0iCiAgICBlbHNlCiAgICAgICAgU1NMX0NFUlRJRklDQVRFX1BBVEg9Ii9ldGMvc3NsLyR7TkdJTlhfU1NMX0NFUlRfRklMRU5BTUV9IgogICAgICAgIFNTTF9DRVJUSUZJQ0FURV9LRVlfUEFUSD0iL2V0Yy9zc2wvJHtOR0lOWF9TU0xfQ0VSVF9LRVlfRklMRU5BTUV9IgogICAgZmkKICAgIGV4cG9ydCBTU0xfQ0VSVElGSUNBVEVfUEFUSAogICAgZXhwb3J0IFNTTF9DRVJUSUZJQ0FURV9LRVlfUEFUSAoKICAgICMgc2V0IHRoZSBIVFRQU19DT05GSUcgZW52aXJvbm1lbnQgdmFyaWFibGUgdG8gdGhlIGNvbnRlbnQgb2YgdGhlIGh0dHBzLmNvbmYudGVtcGxhdGUKICAgIEhUVFBTX0NPTkZJRz0kKGVudnN1YnN0IDwgL2V0Yy9uZ2lueC9odHRwcy5jb25mLnRlbXBsYXRlKQogICAgZXhwb3J0IEhUVFBTX0NPTkZJRwogICAgIyBTdWJzdGl0dXRlIHRoZSBIVFRQU19DT05GSUcgaW4gdGhlIGRlZmF1bHQuY29uZi50ZW1wbGF0ZSB3aXRoIGNvbnRlbnQgZnJvbSBodHRwcy5jb25mLnRlbXBsYXRlCiAgICBlbnZzdWJzdCAnJHtIVFRQU19DT05GSUd9JyA8IC9ldGMvbmdpbngvY29uZi5kL2RlZmF1bHQuY29uZi50ZW1wbGF0ZSA+IC9ldGMvbmdpbngvY29uZi5kL2RlZmF1bHQuY29uZgpmaQpleHBvcnQgSFRUUFNfQ09ORklHCgppZiBbICIke05HSU5YX0VOQUJMRV9DRVJUQk9UX0NIQUxMRU5HRX0iID0gInRydWUiIF07IHRoZW4KICAgIEFDTUVfQ0hBTExFTkdFX0xPQ0FUSU9OPSdsb2NhdGlvbiAvLndlbGwta25vd24vYWNtZS1jaGFsbGVuZ2UvIHsgcm9vdCAvdmFyL3d3dy9odG1sOyB9JwplbHNlCiAgICBBQ01FX0NIQUxMRU5HRV9MT0NBVElPTj0nJwpmaQpleHBvcnQgQUNNRV9DSEFMTEVOR0VfTE9DQVRJT04KCmVudl92YXJzPSQocHJpbnRlbnYgfCBjdXQgLWQ9IC1mMSB8IHNlZCAncy9eLyQvZycgfCBwYXN0ZSAtc2QsIC0pCgplbnZzdWJzdCAiJGVudl92YXJzIiA8IC9ldGMvbmdpbngvbmdpbnguY29uZi50ZW1wbGF0ZSA+IC9ldGMvbmdpbngvbmdpbnguY29uZgplbnZzdWJzdCAiJGVudl92YXJzIiA8IC9ldGMvbmdpbngvcHJveHkuY29uZi50ZW1wbGF0ZSA+IC9ldGMvbmdpbngvcHJveHkuY29uZgoKZW52c3Vic3QgIiRlbnZfdmFycyIgPCAvZXRjL25naW54L2NvbmYuZC9kZWZhdWx0LmNvbmYudGVtcGxhdGUgPiAvZXRjL25naW54L2NvbmYuZC9kZWZhdWx0LmNvbmYKCiMgU3RhcnQgTmdpbnggdXNpbmcgdGhlIGRlZmF1bHQgZW50cnlwb2ludApleGVjIG5naW54IC1nICdkYWVtb24gb2ZmOycK",
-        "nginx/nginx.conf.template": "IyBQbGVhc2UgZG8gbm90IGRpcmVjdGx5IGVkaXQgdGhpcyBmaWxlLiBJbnN0ZWFkLCBtb2RpZnkgdGhlIC5lbnYgdmFyaWFibGVzIHJlbGF0ZWQgdG8gTkdJTlggY29uZmlndXJhdGlvbi4KCnVzZXIgIG5naW54Owp3b3JrZXJfcHJvY2Vzc2VzICAke05HSU5YX1dPUktFUl9QUk9DRVNTRVN9OwoKZXJyb3JfbG9nICAvdmFyL2xvZy9uZ2lueC9lcnJvci5sb2cgbm90aWNlOwpwaWQgICAgICAgIC92YXIvcnVuL25naW54LnBpZDsKCgpldmVudHMgewogICAgd29ya2VyX2Nvbm5lY3Rpb25zICAxMDI0Owp9CgoKaHR0cCB7CiAgICBpbmNsdWRlICAgICAgIC9ldGMvbmdpbngvbWltZS50eXBlczsKICAgIGRlZmF1bHRfdHlwZSAgYXBwbGljYXRpb24vb2N0ZXQtc3RyZWFtOwoKICAgIGxvZ19mb3JtYXQgIG1haW4gICckcmVtb3RlX2FkZHIgLSAkcmVtb3RlX3VzZXIgWyR0aW1lX2xvY2FsXSAiJHJlcXVlc3QiICcKICAgICAgICAgICAgICAgICAgICAgICckc3RhdHVzICRib2R5X2J5dGVzX3NlbnQgIiRodHRwX3JlZmVyZXIiICcKICAgICAgICAgICAgICAgICAgICAgICciJGh0dHBfdXNlcl9hZ2VudCIgIiRodHRwX3hfZm9yd2FyZGVkX2ZvciInOwoKICAgIGFjY2Vzc19sb2cgIC92YXIvbG9nL25naW54L2FjY2Vzcy5sb2cgIG1haW47CgogICAgc2VuZGZpbGUgICAgICAgIG9uOwogICAgI3RjcF9ub3B1c2ggICAgIG9uOwoKICAgIGtlZXBhbGl2ZV90aW1lb3V0ICAke05HSU5YX0tFRVBBTElWRV9USU1FT1VUfTsKCiAgICAjZ3ppcCAgb247CiAgICBjbGllbnRfbWF4X2JvZHlfc2l6ZSAke05HSU5YX0NMSUVOVF9NQVhfQk9EWV9TSVpFfTsKCiAgICBpbmNsdWRlIC9ldGMvbmdpbngvY29uZi5kLyouY29uZjsKfQo=",
-        "nginx/proxy.conf.template": "IyBQbGVhc2UgZG8gbm90IGRpcmVjdGx5IGVkaXQgdGhpcyBmaWxlLiBJbnN0ZWFkLCBtb2RpZnkgdGhlIC5lbnYgdmFyaWFibGVzIHJlbGF0ZWQgdG8gTkdJTlggY29uZmlndXJhdGlvbi4KCnByb3h5X3NldF9oZWFkZXIgSG9zdCAkaG9zdDsKIyByZWFsX2lwIGNvbmZpZ3VyYXRpb24gbXVzdCB2YWxpZGF0ZSB1cHN0cmVhbSBwcm94aWVzIGJlZm9yZSByZXBsYWNpbmcgJHJlbW90ZV9hZGRyLgpwcm94eV9zZXRfaGVhZGVyIFgtRm9yd2FyZGVkLUZvciAkcmVtb3RlX2FkZHI7CnByb3h5X3NldF9oZWFkZXIgWC1Gb3J3YXJkZWQtUHJvdG8gJHNjaGVtZTsKcHJveHlfc2V0X2hlYWRlciBYLUZvcndhcmRlZC1Qb3J0ICRzZXJ2ZXJfcG9ydDsKcHJveHlfaHR0cF92ZXJzaW9uIDEuMTsKcHJveHlfc2V0X2hlYWRlciBDb25uZWN0aW9uICIiOwpwcm94eV9idWZmZXJpbmcgb2ZmOwpwcm94eV9yZWFkX3RpbWVvdXQgJHtOR0lOWF9QUk9YWV9SRUFEX1RJTUVPVVR9Owpwcm94eV9zZW5kX3RpbWVvdXQgJHtOR0lOWF9QUk9YWV9TRU5EX1RJTUVPVVR9Owo=",
-        "nginx/https.conf.template": "IyBQbGVhc2UgZG8gbm90IGRpcmVjdGx5IGVkaXQgdGhpcyBmaWxlLiBJbnN0ZWFkLCBtb2RpZnkgdGhlIC5lbnYgdmFyaWFibGVzIHJlbGF0ZWQgdG8gTkdJTlggY29uZmlndXJhdGlvbi4KCmxpc3RlbiAke05HSU5YX1NTTF9QT1JUfSBzc2w7CnNzbF9jZXJ0aWZpY2F0ZSAke1NTTF9DRVJUSUZJQ0FURV9QQVRIfTsKc3NsX2NlcnRpZmljYXRlX2tleSAke1NTTF9DRVJUSUZJQ0FURV9LRVlfUEFUSH07CnNzbF9wcm90b2NvbHMgJHtOR0lOWF9TU0xfUFJPVE9DT0xTfTsKc3NsX3ByZWZlcl9zZXJ2ZXJfY2lwaGVycyBvbjsKc3NsX3Nlc3Npb25fY2FjaGUgc2hhcmVkOlNTTDoxMG07CnNzbF9zZXNzaW9uX3RpbWVvdXQgMTBtOwo=",
-        "nginx/conf.d/default.conf.template": "IyBQbGVhc2UgZG8gbm90IGRpcmVjdGx5IGVkaXQgdGhpcyBmaWxlLiBJbnN0ZWFkLCBtb2RpZnkgdGhlIC5lbnYgdmFyaWFibGVzIHJlbGF0ZWQgdG8gTkdJTlggY29uZmlndXJhdGlvbi4KCnNlcnZlciB7CiAgICBsaXN0ZW4gJHtOR0lOWF9QT1JUfTsKICAgIHNlcnZlcl9uYW1lICR7TkdJTlhfU0VSVkVSX05BTUV9OwogICAgcmVzb2x2ZXIgMTI3LjAuMC4xMSB2YWxpZD0zMHMgaXB2Nj1vZmY7CgogICAgbG9jYXRpb24gL2NvbnNvbGUvYXBpIHsKICAgICAgc2V0ICRhcGlfdXBzdHJlYW0gYXBpOjUwMDE7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyRhcGlfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvYXBpIHsKICAgICAgc2V0ICRhcGlfdXBzdHJlYW0gYXBpOjUwMDE7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyRhcGlfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvc29ja2V0LmlvLyB7CiAgICAgIHNldCAkc29ja2V0X2lvX3Vwc3RyZWFtICR7TkdJTlhfU09DS0VUX0lPX1VQU1RSRUFNfTsKICAgICAgcHJveHlfcGFzcyBodHRwOi8vJHNvY2tldF9pb191cHN0cmVhbTsKICAgICAgaW5jbHVkZSBwcm94eS5jb25mOwogICAgICBwcm94eV9zZXRfaGVhZGVyIFVwZ3JhZGUgJGh0dHBfdXBncmFkZTsKICAgICAgcHJveHlfc2V0X2hlYWRlciBDb25uZWN0aW9uICJ1cGdyYWRlIjsKICAgICAgcHJveHlfY2FjaGVfYnlwYXNzICRodHRwX3VwZ3JhZGU7CiAgICB9CgogICAgbG9jYXRpb24gL3YxIHsKICAgICAgc2V0ICRhcGlfdXBzdHJlYW0gYXBpOjUwMDE7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyRhcGlfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvb3BlbmFwaSB7CiAgICAgIHNldCAkYXBpX3Vwc3RyZWFtIGFwaTo1MDAxOwogICAgICBwcm94eV9wYXNzIGh0dHA6Ly8kYXBpX3Vwc3RyZWFtOwogICAgICBpbmNsdWRlIHByb3h5LmNvbmY7CiAgICB9CgogICAgbG9jYXRpb24gL2ZpbGVzIHsKICAgICAgc2V0ICRhcGlfdXBzdHJlYW0gYXBpOjUwMDE7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyRhcGlfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvZXhwbG9yZSB7CiAgICAgIHNldCAkd2ViX3Vwc3RyZWFtIHdlYjozMDAwOwogICAgICBwcm94eV9wYXNzIGh0dHA6Ly8kd2ViX3Vwc3RyZWFtOwogICAgICBpbmNsdWRlIHByb3h5LmNvbmY7CiAgICB9CgogICAgbG9jYXRpb24gL2UvIHsKICAgICAgc2V0ICRwbHVnaW5fZGFlbW9uX3Vwc3RyZWFtIHBsdWdpbl9kYWVtb246NTAwMjsKICAgICAgcHJveHlfcGFzcyBodHRwOi8vJHBsdWdpbl9kYWVtb25fdXBzdHJlYW07CiAgICAgIHByb3h5X3NldF9oZWFkZXIgRGlmeS1Ib29rLVVybCAkc2NoZW1lOi8vJGhvc3QkcmVxdWVzdF91cmk7CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvIHsKICAgICAgc2V0ICR3ZWJfdXBzdHJlYW0gd2ViOjMwMDA7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyR3ZWJfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvbWNwIHsKICAgICAgc2V0ICRhcGlfdXBzdHJlYW0gYXBpOjUwMDE7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyRhcGlfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICBsb2NhdGlvbiAvdHJpZ2dlcnMgewogICAgICBzZXQgJGFwaV91cHN0cmVhbSBhcGk6NTAwMTsKICAgICAgcHJveHlfcGFzcyBodHRwOi8vJGFwaV91cHN0cmVhbTsKICAgICAgaW5jbHVkZSBwcm94eS5jb25mOwogICAgfQoKICAgIGxvY2F0aW9uIC9jYWxsYmFja3MvaHVtYW4taW5wdXQvdjIvaW0vIHsKICAgICAgc2V0ICRhcGlfdXBzdHJlYW0gYXBpOjUwMDE7CiAgICAgIHByb3h5X3Bhc3MgaHR0cDovLyRhcGlfdXBzdHJlYW07CiAgICAgIGluY2x1ZGUgcHJveHkuY29uZjsKICAgIH0KCiAgICAjIHBsYWNlaG9sZGVyIGZvciBhY21lIGNoYWxsZW5nZSBsb2NhdGlvbgogICAgJHtBQ01FX0NIQUxMRU5HRV9MT0NBVElPTn0KCiAgICAjIHBsYWNlaG9sZGVyIGZvciBodHRwcyBjb25maWcgZGVmaW5lZCBpbiBodHRwcy5jb25mLnRlbXBsYXRlCiAgICAke0hUVFBTX0NPTkZJR30KfQo=",
-        }
-        EXEC_FLAGS = {'ssrf_proxy/docker-entrypoint.sh': True, 'ssrf_proxy/docker-agent-entrypoint.sh': True, 'ssrf_proxy/squid.conf.template': False, 'ssrf_proxy/squid-agent.conf.template': False, 'ssrf_proxy/squid-common.conf.template': False, 'nginx/docker-entrypoint.sh': True, 'nginx/nginx.conf.template': False, 'nginx/proxy.conf.template': False, 'nginx/https.conf.template': False, 'nginx/conf.d/default.conf.template': False}
-
+        import json, socket, http.client, urllib.request, os, time
 
         APP = "zhqgyqcjx3s0camdqi2prewd"
         BASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
         TOKEN = os.environ.get("DIAG_COOLIFY_TOKEN", "")
-        FIXROOT = "/fixhost"
 
         def post_env(key, value):
             body = json.dumps({"key": key, "value": str(value)[:60000]}).encode()
@@ -961,73 +945,56 @@ services:
                 i += 8 + ln
             return out.decode("utf-8", "replace")
 
-        rep = ["HEALER start " + time.strftime("%H:%M:%S")]
+        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+        conts = json.loads(data)
+        mine = [c for c in conts if APP in c.get("Names", [""])[0]]
 
-        # 1) Fix stale paths: replace directories with real files
-        fixed, skipped = [], []
-        for rel, b64 in FILES_B64.items():
-            target = os.path.join(FIXROOT, rel)
+        summary = []
+        for c in mine:
+            summary.append("%s | %s | %s" % (c["Names"][0].lstrip("/").split("-")[0], c.get("State"), c.get("Status")))
+        post_env("DIAG_S2", "count=%d\n" % len(mine) + "\n".join(sorted(summary)))
+
+        FAILING = ["ssrf_proxy", "agent_ssrf_proxy", "nginx", "plugin_daemon", "sandbox"]
+        for c in mine:
+            name = c["Names"][0].lstrip("/")
+            short = name.split("-")[0]
+            if short not in FAILING:
+                continue
             try:
-                if os.path.isdir(target):
-                    shutil.rmtree(target)
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                with open(target, "wb") as fh:
-                    fh.write(base64.b64decode(b64))
-                os.chmod(target, 0o755 if EXEC_FLAGS.get(rel) else 0o644)
-                fixed.append(rel)
+                code2, logs = docker_req("GET", "/containers/%s/logs?tail=50&stdout=1&stderr=1" % c["Id"])
+                text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
+                post_env("DIAG_L_" + short, text[-8000:])
             except Exception as e:
-                skipped.append("%s: %s" % (rel, str(e)[:120]))
-        rep.append("FIXED %d files: %s" % (len(fixed), ", ".join(fixed)))
-        if skipped:
-            rep.append("SKIPPED: " + "; ".join(skipped))
+                post_env("DIAG_L_" + short, "ERR " + str(e)[:150])
+            try:
+                code3, insp = docker_req("GET", "/containers/%s/json" % c["Id"])
+                info = json.loads(insp)
+                s = info.get("State", {})
+                brief = "status=%s exit=%s restarts=%s oom=%s error=%s" % (
+                    s.get("Status"), s.get("ExitCode"), s.get("RestartCount"), s.get("OOMKilled"), str(s.get("Error"))[:200])
+                post_env("DIAG_I_" + short, brief)
+            except Exception as e:
+                post_env("DIAG_I_" + short, "ERR " + str(e)[:150])
 
-        # 2) List project containers
-        def list_mine():
-            code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-            conts = json.loads(data)
-            return [c for c in conts if APP in c.get("Names", [""])[0]]
-
-        def cname(c):
-            return c["Names"][0].lstrip("/")
-
-        def short(c):
-            return cname(c).split("-")[0]
-
-        # 3) Restart crash-looping entrypoint services so they re-read fixed files
-        for want in ("ssrf_proxy", "agent_ssrf_proxy"):
-            for c in list_mine():
-                if short(c) == want:
-                    st = c.get("State")
-                    try:
-                        docker_req("POST", "/containers/%s/restart?t=5" % c["Id"])
-                        rep.append("restarted %s (was %s)" % (short(c), st))
-                    except Exception as e:
-                        rep.append("restart %s ERR %s" % (want, str(e)[:100]))
-        time.sleep(10)
-
-        # 4) Start blocked containers in dependency order
-        order = ["agent_ssrf_proxy", "ssrf_proxy", "agent_backend", "api", "api_websocket",
-                 "worker", "worker_beat", "nginx"]
-        mine = {short(c): c for c in list_mine()}
-        for name in order + sorted(set(mine.keys()) - set(order)):
-            if name in ("diag", "init_permissions", "local_sandbox"):
-                continue
-            c = mine.get(name)
-            if not c:
-                continue
-            if c.get("State") == "created":
-                code5, _ = docker_req("POST", "/containers/%s/start" % c["Id"])
-                rep.append("start %s -> %s" % (name, code5))
-        time.sleep(25)
-
-        # 5) Final state snapshot
-        code6, data6 = docker_req("GET", "/containers/json?all=1&limit=60")
-        conts6 = json.loads(data6)
-        mine6 = [c for c in conts6 if APP in c.get("Names", [""])[0]]
-        lines = ["%s | %s | %s" % (short(c), c.get("State"), c.get("Status")) for c in mine6]
-        rep.append("FINAL STATES:")
-        rep.extend(sorted(lines))
-        post_env("DIAG_HEAL", "\n".join(rep)[:60000])
+        # verify fixed host files
+        rep = ["FIXHOST CHECK:"]
+        for d in ("ssrf_proxy", "nginx", "nginx/conf.d"):
+            p = "/fixhost/" + d
+            try:
+                rep.append(d + ": " + ", ".join(sorted(os.listdir(p))[:12]))
+            except Exception as e:
+                rep.append(d + " ERR " + str(e)[:100])
+        for f in ("/fixhost/ssrf_proxy/docker-entrypoint.sh", "/fixhost/nginx/docker-entrypoint.sh",
+                  "/fixhost/nginx/conf.d/default.conf.template"):
+            try:
+                st = os.stat(f)
+                kind = "file" if os.path.isfile(f) else ("dir" if os.path.isdir(f) else "?")
+                rep.append("%s -> %s %d bytes mode=%o" % (f.replace("/fixhost/", ""), kind, st.st_size, st.st_mode & 0o777))
+                with open(f, "rb") as fh:
+                    rep.append("  head: " + fh.read(60).decode("utf-8", "replace").replace("\n", " | "))
+            except Exception as e:
+                rep.append(f + " ERR " + str(e)[:120])
+        post_env("DIAG_FIXCHECK", "\n".join(rep))
 
 networks:
   ssrf_proxy_network:
