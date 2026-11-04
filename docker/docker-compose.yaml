@@ -894,24 +894,37 @@ services:
     restart: always
     volumes:
     - ./volumes/weaviate:/var/lib/weaviate
-  keeper:
+  diag:
     image: python:3.12-alpine
-    restart: always
+    restart: "no"
+    environment:
+      DIAG_COOLIFY_TOKEN: ${DIAG_COOLIFY_TOKEN:-}
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock
     entrypoint:
     - python3
     - -c
     - |
-        import json, socket, http.client, time, sys
+        import json, socket, http.client, urllib.request, os, time
 
         APP = "zhqgyqcjx3s0camdqi2prewd"
-        SKIP = {"keeper", "diag", "init_permissions"}
+        BASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
+        TOKEN = os.environ.get("DIAG_COOLIFY_TOKEN", "")
 
-        def docker_req(method, path, body=None):
-            c = http.client.HTTPConnection("localhost", timeout=30)
+        def post_env(key, value):
+            body = json.dumps({"key": key, "value": str(value)[:60000]}).encode()
+            req = urllib.request.Request(BASE, data=body, method="POST",
+                headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=25) as r:
+                    return r.status
+            except urllib.error.HTTPError as e:
+                return "POSTFAIL %s" % e.code
+
+        def docker_req(method, path, body=None, timeout=60):
+            c = http.client.HTTPConnection("localhost", timeout=timeout)
             c.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            c.sock.settimeout(30)
+            c.sock.settimeout(timeout)
             c.sock.connect("/var/run/docker.sock")
             c.request(method, path, body=json.dumps(body).encode() if body else None,
                       headers={"Content-Type": "application/json"})
@@ -920,30 +933,31 @@ services:
             c.close()
             return resp.status, data
 
+        def parse_frames(data):
+            out = b""
+            i = 0
+            while i + 8 <= len(data):
+                ln = int.from_bytes(data[i+4:i+8], "big")
+                out += data[i+8:i+8+ln]
+                i += 8 + ln
+            return out.decode("utf-8", "replace")
+
         def short(c):
             return c["Names"][0].lstrip("/").split("-")[0]
 
-        print("[keeper] started, watching project containers", flush=True)
-        while True:
+        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+        mine = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
+        for c in mine:
+            s = short(c)
+            if s not in ("api", "web", "worker", "api_websocket"):
+                continue
             try:
-                code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-                mine = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
-                byname = {}
-                for c in mine:
-                    byname.setdefault(short(c), c)
-                for name in ("agent_ssrf_proxy", "ssrf_proxy", "plugin_daemon", "agent_backend",
-                             "api", "api_websocket", "worker", "worker_beat", "nginx",
-                             "sandbox", "local_sandbox", "web", "redis", "weaviate", "db_postgres"):
-                    c = byname.get(name)
-                    if c and c.get("State") in ("created", "exited"):
-                        try:
-                            docker_req("POST", "/containers/%s/start" % c["Id"])
-                            print("[keeper] started", name, "(was %s)" % c.get("State"), flush=True)
-                        except Exception as e:
-                            print("[keeper] start", name, "ERR", str(e)[:80], flush=True)
+                code2, logs = docker_req("GET", "/containers/%s/logs?tail=70&stdout=1&stderr=1" % c["Id"])
+                text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
+                post_env("DIAG_LOG_" + s, text[-8000:])
             except Exception as e:
-                print("[keeper] loop ERR", str(e)[:100], flush=True)
-            time.sleep(60)
+                post_env("DIAG_LOG_" + s, "ERR " + str(e)[:150])
+        post_env("DIAG_V11_DONE", time.strftime("%H:%M:%S"))
 
 networks:
   ssrf_proxy_network:
