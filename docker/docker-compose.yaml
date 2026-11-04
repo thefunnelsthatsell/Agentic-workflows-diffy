@@ -894,9 +894,9 @@ services:
     restart: always
     volumes:
     - ./volumes/weaviate:/var/lib/weaviate
-  diag:
+  keeper:
     image: python:3.12-alpine
-    restart: "no"
+    restart: always
     environment:
       DIAG_COOLIFY_TOKEN: ${DIAG_COOLIFY_TOKEN:-}
     volumes:
@@ -908,18 +908,30 @@ services:
         import json, socket, http.client, urllib.request, os, time
 
         APP = "zhqgyqcjx3s0camdqi2prewd"
-        BASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
+        ENVBASE = "http://69.197.178.193:8000/api/v1/applications/" + APP + "/envs"
         TOKEN = os.environ.get("DIAG_COOLIFY_TOKEN", "")
+        SKIP = {"keeper", "diag", "init_permissions"}
+        ORDER = ["agent_ssrf_proxy", "ssrf_proxy", "plugin_daemon", "agent_backend", "api",
+                 "api_websocket", "worker", "worker_beat", "nginx", "sandbox", "local_sandbox",
+                 "web", "redis", "weaviate", "db_postgres"]
 
         def post_env(key, value):
             body = json.dumps({"key": key, "value": str(value)[:60000]}).encode()
-            req = urllib.request.Request(BASE, data=body, method="POST",
+            req = urllib.request.Request(ENVBASE, data=body, method="PATCH",
                 headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
             try:
                 with urllib.request.urlopen(req, timeout=25) as r:
                     return r.status
             except urllib.error.HTTPError as e:
-                return "POSTFAIL %s" % e.code
+                if e.code in (400, 404, 409, 422):
+                    req2 = urllib.request.Request(ENVBASE, data=body, method="POST",
+                        headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
+                    try:
+                        with urllib.request.urlopen(req2, timeout=25) as r2:
+                            return r2.status
+                    except urllib.error.HTTPError as e2:
+                        return "FAIL %s" % e2.code
+                return "FAIL %s" % e.code
 
         def docker_req(method, path, body=None, timeout=60):
             c = http.client.HTTPConnection("localhost", timeout=timeout)
@@ -945,19 +957,42 @@ services:
         def short(c):
             return c["Names"][0].lstrip("/").split("-")[0]
 
-        code, data = docker_req("GET", "/containers/json?all=1&limit=60")
-        mine = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
-        for c in mine:
-            s = short(c)
-            if s not in ("api", "web", "worker", "api_websocket"):
-                continue
+        print("[keeper] v2 started", flush=True)
+        cycle = 0
+        while True:
             try:
-                code2, logs = docker_req("GET", "/containers/%s/logs?tail=70&stdout=1&stderr=1" % c["Id"])
-                text = parse_frames(logs) if code2 == 200 else ("logs HTTP %d" % code2)
-                post_env("DIAG_LOG_" + s, text[-8000:])
+                code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+                mine = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
+                byname = {}
+                for c in mine:
+                    byname.setdefault(short(c), c)
+                fixed = []
+                for name in ORDER:
+                    c = byname.get(name)
+                    if c and c.get("State") in ("created", "exited"):
+                        try:
+                            docker_req("POST", "/containers/%s/start" % c["Id"])
+                            fixed.append(name)
+                        except Exception as e:
+                            print("[keeper] start %s ERR %s" % (name, str(e)[:60]), flush=True)
+                if fixed:
+                    print("[keeper] started:", ",".join(fixed), flush=True)
+                cycle += 1
+                if cycle % 15 == 1:
+                    code, data = docker_req("GET", "/containers/json?all=1&limit=60")
+                    mine2 = [c for c in json.loads(data) if APP in c.get("Names", [""])[0]]
+                    states = "\n".join(sorted("%s | %s" % (short(c), c.get("State")) for c in mine2))
+                    post_env("DIAG_STATUS", time.strftime("%H:%M:%S") + "\n" + states)
+                    apic = byname.get("api")
+                    if apic and apic.get("State") != "running":
+                        try:
+                            code2, logs = docker_req("GET", "/containers/%s/logs?tail=40&stdout=1&stderr=1" % apic["Id"])
+                            post_env("DIAG_APILOG", parse_frames(logs)[-6000:])
+                        except Exception as e:
+                            post_env("DIAG_APILOG", "ERR " + str(e)[:100])
             except Exception as e:
-                post_env("DIAG_LOG_" + s, "ERR " + str(e)[:150])
-        post_env("DIAG_V11_DONE", time.strftime("%H:%M:%S"))
+                print("[keeper] loop ERR", str(e)[:100], flush=True)
+            time.sleep(60)
 
 networks:
   ssrf_proxy_network:
