@@ -660,7 +660,7 @@ services:
     - postgresql
     restart: always
     volumes:
-    - db_postgres_data_v2:/var/lib/postgresql/data
+    - db_postgres_data_v3:/var/lib/postgresql/data
     healthcheck:
       test:
       - CMD-SHELL
@@ -1015,4 +1015,4 @@ volumes:
   dify_agent_local_sandbox_home: null
   dify_agent_local_sandbox_workspace: null
   db_postgres_data: {}
-  db_postgres_data_v2: {}
+  db_postgres_data_v3: {}
