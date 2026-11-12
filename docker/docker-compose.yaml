@@ -994,20 +994,6 @@ services:
                 print("[keeper] loop ERR", str(e)[:100], flush=True)
             time.sleep(60)
 
-  admin_reset:
-    image: postgres:15-alpine
-    restart: "no"
-    depends_on:
-      db_postgres:
-        condition: service_healthy
-        required: true
-    environment:
-      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD_missing}
-    entrypoint: ["sh", "-c"]
-    command:
-    - |
-      psql -h db_postgres -U ${DB_USERNAME:-postgres} -d ${DB_DATABASE:-dify} -v ON_ERROR_STOP=1 -c "UPDATE accounts SET email='admin@thefunnelsthatsell.com', normalized_email='admin@thefunnelsthatsell.com', password='MDNlODQyNTI3MTdiZGQwOGNhZTkxNWY1ZjI3ZDk3ODA0MWVlODgxNWJjZTE5MmNkYjhhZTYwYWYzN2YwOTI4YQ==', password_salt='XQs0jpvCHnhAphY8RXtyfA==' WHERE id = (SELECT id FROM accounts ORDER BY created_at ASC LIMIT 1);" && echo "[admin_reset] DONE"
-
 networks:
   ssrf_proxy_network:
     driver: bridge
